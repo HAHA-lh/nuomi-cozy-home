@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f3e9">
+  <title>糯米的小屋 · 可交互 3D 样机</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/></symbol>
+    <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="6" cy="7" rx="2.2" ry="3"/><ellipse cx="12" cy="5" rx="2.2" ry="3"/><ellipse cx="18" cy="7" rx="2.2" ry="3"/><path d="M7 13c3-4 7-4 10 0 6 7-1 10-5 7-4 3-11 0-5-7Z"/></symbol>
+    <symbol id="i-chair" viewBox="0 0 24 24"><path d="M6 11V6a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v5M4 10a2 2 0 0 1 2 2v3h12v-3a2 2 0 1 1 4 0v6H2v-6a2 2 0 0 1 2-2ZM5 18v3m14-3v3"/></symbol>
+    <symbol id="i-hat" viewBox="0 0 24 24"><path d="M5 14c0-5 3-9 7-9s7 4 7 9M3 14h18c0 5-18 5-18 0ZM12 5V2"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 6h5l2-3h4l2 3h5v14H3Z"/><circle cx="12" cy="13" r="4"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21 3 12C-2 5 7-1 12 6c5-7 14-1 9 6Z"/></symbol>
+    <symbol id="i-bowl" viewBox="0 0 24 24"><path d="M3 11h18l-2 8H5ZM6 8l1-3m5 3V4m5 4-1-3"/></symbol>
+    <symbol id="i-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M4 8c6 0 10 6 10 13M9 3c0 6 6 10 12 10M5 18c4-5 9-7 15-8"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3ZM20 2v4m-2-2h4"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 15A9 9 0 0 1 9 3a9 9 0 1 0 12 12Z"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 0 6M4 4v6h6"/></symbol>
+    <symbol id="i-volume" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3ZM16 8c3 2 3 6 0 8m3-11c5 4 5 10 0 14"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3Zm13 0 6 6m0-6-6 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v13m-5-5 5 5 5-5M4 17v4h16v-4"/></symbol>
+  </svg>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark"><svg><use href="#i-home"/></svg></span><div><h1>糯米的小屋</h1><p>NUOMI’S LITTLE HOME</p></div></div>
+    <div class="top-actions"><span class="live-label"><i></i>实时 3D · 可交互样机</span><button class="icon-button" id="sound-button" aria-label="开启音效" title="开启音效"><svg><use href="#i-mute"/></svg></button><button class="icon-button" id="help-button" aria-label="玩法说明" title="玩法说明">?</button></div>
+  </header>
+  <main class="app-shell">
+    <section class="scene-section" aria-label="糯米的三维小屋">
+      <div id="scene" role="img" aria-label="可点击的 3D 房间，点击猫咪摸头，点击家具互动，双指拖动旋转，双指开合缩放"></div>
+      <div class="scene-heading"><span class="eyebrow">A LITTLE MOMENT TOGETHER</span><h2>今天也要，好好陪你。</h2><p><span class="sun-dot"></span><span id="light-label">午后 · 阳光正好</span></p></div>
+      <div class="season-picker"><div class="season-controls" id="season-controls" role="group" aria-label="切换小屋四季"><button data-season="spring" disabled aria-pressed="false"><span aria-hidden="true">✿</span>春</button><button data-season="summer" disabled aria-pressed="false"><span aria-hidden="true">☀</span>夏</button><button data-season="autumn" disabled aria-pressed="false"><span aria-hidden="true">❧</span>秋</button><button data-season="winter" disabled aria-pressed="false"><span aria-hidden="true">❄</span>冬</button></div><p id="season-description" role="status">正在准备四季的小屋…</p></div>
+      <div class="view-controls"><button class="icon-button" id="light-button" title="切换傍晚灯光" aria-label="切换傍晚灯光"><svg><use href="#i-sun"/></svg></button><button class="icon-button" id="reset-camera" title="恢复视角" aria-label="恢复视角"><svg><use href="#i-reset"/></svg></button><button class="icon-button" id="zoom-in" title="靠近糯米" aria-label="靠近糯米">＋</button><button class="icon-button" id="zoom-out" title="看完整小屋" aria-label="看完整小屋">－</button></div>
+      <div class="cat-bubble" id="cat-bubble" aria-hidden="true">喵，想和你玩。</div>
+      <div id="loading" class="loading"><span class="loading-paw">✦</span><strong>糯米正在走过来</strong><span>准备小屋和 3D 角色…</span></div>
+      <div id="render-error" class="render-error" hidden><strong>这次没能打开 3D 小屋</strong><p id="error-detail"></p><button id="reload-button" class="primary-button">重新加载</button></div>
+      <div class="scene-caption"><span class="caption-pill">双指开合缩放 · 双指拖动旋转</span><span class="prototype-note">奶油小屋 · 原生绑定猫咪</span></div>
+    </section>
+    <aside class="sidebar" aria-label="陪伴与装扮">
+      <section class="cat-card"><span class="cat-avatar" aria-hidden="true"><svg><use href="#i-paw"/></svg></span><div><h2>糯米 <span>伯曼猫</span></h2><p id="cat-mood">把普通的一天，过得软乎乎。</p></div><svg class="heart-icon"><use href="#i-heart"/></svg></section>
+      <div class="stats"><div><span>亲密</span><strong id="affection-value">20</strong><div class="meter"><i id="affection-meter"></i></div></div><div><span>饱腹</span><strong id="fullness-value">70</strong><div class="meter gold"><i id="fullness-meter"></i></div></div><div><span>清洁</span><strong id="cleanliness-value">85</strong><div class="meter blue"><i id="cleanliness-meter"></i></div></div></div>
+      <div id="panel" aria-live="polite"></div>
+      <div class="save-status"><span id="save-dot"></span><span id="save-label">进度保存在这台设备</span></div>
+    </aside>
+  </main>
+  <nav class="bottom-nav" aria-label="主导航"><button data-tab="care" class="active"><svg><use href="#i-paw"/></svg><span>陪伴</span></button><button data-tab="decorate"><svg><use href="#i-chair"/></svg><span>布置</span></button><button data-tab="wardrobe"><svg><use href="#i-hat"/></svg><span>衣橱</span></button><button data-tab="album"><svg><use href="#i-camera"/></svg><span>相册</span><span id="album-count" class="badge" hidden>0</span></button></nav>
+  <div id="toast" class="toast" role="status"></div>
+  <dialog id="help-dialog"><button class="dialog-close icon-button" id="close-help" aria-label="关闭说明"><svg><use href="#i-close"/></svg></button><span class="eyebrow">MAKE YOURSELF AT HOME</span><h2>一间小屋，慢慢熟悉。</h2><p>这里的猫、家具和帽子都是真实的 3D 物体，不是预录视频。</p><ul><li>点击糯米摸摸头；点击地面让它走过去。</li><li>点击食盆、小球、沙发、软椅或窗帘，让它走到相应位置互动。</li><li>触屏：双指开合缩放，两指同时拖动旋转；单指点击互动。电脑：鼠标拖动旋转，滚轮或右侧 ＋ / － 调整远近。</li><li>在衣橱换帽子；布置页可切换食碗、小球配色，并选择陪伴角落。</li><li>相册可以拍摄、查看和下载小屋照片。</li></ul><p class="small-note">这是浏览器交互样机，全部物品免费试用，无真实交易。存档只在本机；尚未进行微信真机验收。猫咪使用原生绑定和 10 个动作；当前只能在地面走动，不会跳上家具。镜面使用静态房间反射，不映射移动中的猫。</p><button id="start-playing" class="primary-button">开始陪伴 <svg><use href="#i-arrow"/></svg></button></dialog>
+  <dialog id="photo-dialog"><button class="dialog-close icon-button" id="close-photo" aria-label="关闭照片"><svg><use href="#i-close"/></svg></button><img id="photo-large" alt="糯米的小屋照片"><a id="photo-download" class="primary-button" download="nuomi.png"><svg><use href="#i-download"/></svg>保存照片</a></dialog>
+  <script type="module" src="./src/app.js"></script>
+  <script>window.addEventListener('error',function(e){if(!document.querySelector('#scene canvas')){document.getElementById('loading').hidden=true;document.getElementById('render-error').hidden=false;document.getElementById('error-detail').textContent='请通过本地预览地址打开，而不是直接双击 HTML。'+(e.message||'');}});document.getElementById('reload-button').onclick=()=>location.reload();</script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "default": "spring",
+  "seasons": {
+    "spring": {
+      "label": "春日花开", "description": "樱粉花簇、嫩绿枝叶，柔和晨光洒进小屋。",
+      "background": "#e9e7dc", "exposure": 1.13,
+      "hemi": {"sky": "#fff8ed", "ground": "#ded8bc", "intensity": 2.45},
+      "key": {"color": "#fff0db", "intensity": 1.7, "position": [-6, 7, 4]},
+      "fill": {"color": "#eef3f2", "intensity": 1.05}, "lampIntensity": 0.1,
+      "palette": {"T Leaf green rug": "#a6bd87", "T Lavender checker": "#e7c9d9", "T Coral ivory waves": "#efd2d2", "F · Powder blue fabric": "#bfd4c6", "F · Powder blue thread": "#a7c4b2", "Decor | Tulip blush": "#eaa6b8", "Decor | Fresh leaf green": "#79a067", "Decor | Light leaf green": "#a7c179"}
+    },
+    "summer": {
+      "label": "盛夏晴空", "description": "浓绿树荫、柠檬与冰饮，明亮的蓝天日光。",
+      "background": "#e0eaeb", "exposure": 1.13,
+      "hemi": {"sky": "#f0fbff", "ground": "#d3d8b9", "intensity": 2.65},
+      "key": {"color": "#fff5e2", "intensity": 1.95, "position": [-5, 9, 3]},
+      "fill": {"color": "#e0f2fb", "intensity": 1.0}, "lampIntensity": 0,
+      "palette": {"T Leaf green rug": "#73b4aa", "T Lavender checker": "#91c6da", "T Butter yellow": "#f3d65f", "T Coral ivory waves": "#e9bf8c", "F · Powder blue fabric": "#93c7dd", "F · Powder blue thread": "#7ab3cd", "Decor | Tulip blush": "#f5d36c", "Decor | Fresh leaf green": "#3f8859", "Decor | Light leaf green": "#79ad60", "Decor | Olive leaf": "#54835a", "Decor | Lime leaf": "#8bbb62"}
+    },
+    "autumn": {
+      "label": "秋日暖金", "description": "金橙叶片、阳台落叶与小南瓜，低角度暖阳。",
+      "background": "#e7d7b6", "exposure": 1.12,
+      "hemi": {"sky": "#fff1db", "ground": "#d4c2a1", "intensity": 2.25},
+      "key": {"color": "#ffdbad", "intensity": 2.05, "position": [-7, 5, 4]},
+      "fill": {"color": "#e5e7ef", "intensity": 0.95}, "lampIntensity": 0.8,
+      "palette": {"T Leaf green rug": "#be8a52", "T Lavender checker": "#b57c56", "T Butter yellow": "#e8b95e", "T Coral ivory waves": "#bf785e", "F · Powder blue fabric": "#c49b76", "F · Powder blue thread": "#a77b58", "Decor | Tulip blush": "#d79552", "Decor | Fresh leaf green": "#b89558", "Decor | Light leaf green": "#d2b16d", "Decor | Olive leaf": "#938554", "Decor | Lime leaf": "#bfaa64"}
+    },
+    "winter": {
+      "label": "冬日暖居", "description": "窗外覆雪、冷蓝天光，屋内暖灯与柔软盖毯。",
+      "background": "#dce5ed", "exposure": 1.15,
+      "hemi": {"sky": "#e3efff", "ground": "#d5d4cd", "intensity": 2.35},
+      "key": {"color": "#dceaff", "intensity": 1.15, "position": [-6, 6, 4]},
+      "fill": {"color": "#fff0dc", "intensity": 1.05}, "lampIntensity": 2.8,
+      "palette": {"T Leaf green rug": "#91aabb", "T Lavender checker": "#a6b5cb", "T Butter yellow": "#d6b78b", "T Coral ivory waves": "#b8736e", "F · Powder blue fabric": "#c5d4df", "F · Powder blue thread": "#a4bbce", "Decor | Tulip blush": "#ece6dc", "Decor | Fresh leaf green": "#809b8e", "Decor | Light leaf green": "#a5b6a2", "Decor | Olive leaf": "#7c9288", "Decor | Lime leaf": "#99ac92"}
+    }
+  }
+}
