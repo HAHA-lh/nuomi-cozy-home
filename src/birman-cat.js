@@ -154,6 +154,7 @@ export function createBirmanCatController(model, animations = []) {
     if (disposed || !Number.isFinite(dt) || !Number.isFinite(time) || dt < 0) return;
     dt = THREE.MathUtils.clamp(dt, 0, .1);
     selectClip(resolveBirmanClip(state, clips.keys()));
+    if (current?.name === 'walk') current.action.setEffectiveTimeScale(state.reverse ? -1 : 1);
     mixer.update(dt);
     for (const [action, remaining] of fadingOut) {
       if (remaining <= dt) {

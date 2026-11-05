@@ -1,4 +1,5 @@
 import * as THREE from '../vendor/three.module.js';
+import { advanceCatPose, safeCatFacing } from './cat-navigation.js';
 import { loadBlenderCat } from './blender-cat.js';
 import { loadImportedRoom, COZY_ROOM_VIEW } from './imported-room.js';
 import { loadState, saveState, applyAction } from './state.js';
@@ -12,7 +13,7 @@ let storage;try{storage=window.localStorage;}catch{storage={getItem(){return nul
 let state=loadState(storage),tab='care',renderer,scene,camera,cat,room,seasons;
 let action='idle',actionEnd=0,pendingAction=null,time=0,lastStamp=0,night=state.night;
 let azimuth=COZY_ROOM_VIEW.azimuth,elevation=COZY_ROOM_VIEW.elevation,viewHeight=COZY_ROOM_VIEW.height,targetView=COZY_ROOM_VIEW.height,wardrobeFacing=.22;
-const focus=new THREE.Vector3(...COZY_ROOM_VIEW.focus),desiredFocus=focus.clone(),destination=new THREE.Vector3();let walking=false,route=[];
+const focus=new THREE.Vector3(...COZY_ROOM_VIEW.focus),desiredFocus=focus.clone();let walking=false,route=[];
 let catScale=ROOM_CAT_SCALE;
 const presentation=()=>({wardrobeFocusHeight:1.25*catScale,bubbleHeight:2.65*catScale,walkSpeed:1.25*catScale});
 const themes=[['sage','鼠尾草','#a0ad83','清新 · 松弛'],['peach','奶油桃','#cda895','温暖 · 柔软'],['lavender','雾紫色','#aaa7bb','安静 · 治愈']];
@@ -61,12 +62,15 @@ function renderPanel(){
 function resetRoomView(){azimuth=COZY_ROOM_VIEW.azimuth;elevation=COZY_ROOM_VIEW.elevation;targetView=COZY_ROOM_VIEW.height;desiredFocus.set(...COZY_ROOM_VIEW.focus);}
 function selectTab(id){tab=id;document.querySelectorAll('[data-tab]').forEach(b=>{b.classList.toggle('active',b.dataset.tab===id);b.setAttribute('aria-current',b.dataset.tab===id?'page':'false');});if(id==='wardrobe'){targetView=3.8;desiredFocus.copy(cat.group.position).add(new THREE.Vector3(0,presentation().wardrobeFocusHeight,0));azimuth=.22;elevation=.23;}else resetRoomView();renderPanel();sound();}
 function startAction(id,duration=3){action=id;actionEnd=time+duration;walking=false;route=[];pendingAction=null;if(marker)marker.visible=false;if(id==='play')room.play(time);}
-function moveTo(pos,next='idle'){const nextRoute=room.navigation.path(cat.group.position,pos);if(!nextRoute.length){toast('这里暂时走不过去，换一个空地试试。');return;}route=nextRoute;const end=route.at(-1);destination.set(route[0].x,0,route[0].z);walking=true;pendingAction=next;action='idle';actionEnd=0;marker.position.set(end.x,room.surfaceHeight(end.x,end.z)+.035,end.z);marker.visible=true;}
+function moveTo(pos,next='idle'){const nextRoute=room.navigation.path({...cat.group.position,yaw:cat.group.rotation.y},pos);if(!nextRoute.length){toast('这里暂时走不过去，换一块空地试试。');return false;}route=nextRoute;const end=route.at(-1);walking=true;pendingAction=next;action='idle';actionEnd=0;marker.position.set(end.x,room.surfaceHeight(end.x,end.z)+.035,end.z);marker.visible=true;return true;}
 const lastCareAt=new Map();
-function care(type){const now=performance.now();if(now-(lastCareAt.get(type)??-Infinity)<400)return;lastCareAt.set(type,now);commit({type});sound(true);
+function care(type){const now=performance.now();if(now-(lastCareAt.get(type)??-Infinity)<400)return;lastCareAt.set(type,now);
+ if(type==='feed'&&!moveTo(room.targets.find(t=>t.id==='bowl').position,'feed'))return;
+ if(type==='play'&&!moveTo(room.targets.find(t=>t.id==='ball').position,'play'))return;
+ commit({type});sound(true);
  if(type==='pet'){startAction('pet');bubble('呼噜呼噜…再摸一下嘛。');particles(cat.group.position,'#c8a0a1');}
- if(type==='feed'){moveTo(room.targets.find(t=>t.id==='bowl').position,'feed');bubble('开饭啦，我来啦！');}
- if(type==='play'){moveTo(room.targets.find(t=>t.id==='ball').position,'play');bubble('这颗球，归我啦！');room.play(time);}
+ if(type==='feed'){bubble('开饭啦，我来啦！');}
+ if(type==='play'){bubble('这颗球，归我啦！');room.play(time);}
  if(type==='clean'){startAction('idle',1);bubble('小屋又变得干干净净啦。');particles(new THREE.Vector3(0,0,0),'#f5e8a9');toast('清洁已恢复 · 小屋焕然一新');}
  if(tab==='care')renderPanel();
 }
@@ -78,7 +82,7 @@ async function init(){
  $('#scene').appendChild(renderer.domElement);renderer.domElement.setAttribute('aria-label','实时 3D 猫咪小屋');renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();fail('图形上下文已暂停，点击重新加载恢复；已有进度不会丢失。');});
  scene=new THREE.Scene();scene.background=new THREE.Color('#e5e4d5');camera=new THREE.OrthographicCamera(-5,5,4,-4,.1,80);
  hemi=new THREE.HemisphereLight('#fff6e6','#a3ac93',.95);scene.add(hemi);keyLight=new THREE.DirectionalLight('#fff0d6',2.0);keyLight.position.set(-3,7,5);keyLight.castShadow=true;keyLight.shadow.mapSize.set(1024,1024);Object.assign(keyLight.shadow.camera,{left:-6,right:6,top:6,bottom:-6,near:.1,far:30});keyLight.shadow.normalBias=.025;keyLight.shadow.bias=-.00015;keyLight.shadow.radius=4;keyLight.shadow.blurSamples=8;keyLight.target.position.set(0,1,0);scene.add(keyLight,keyLight.target);fillLight=new THREE.DirectionalLight('#d4e7ed',.35);fillLight.position.set(4,4,1);scene.add(fillLight);
- [room,cat]=await Promise.all([loadImportedRoom(),loadBlenderCat()]);scene.add(room.group);catScale=room.catScale;cat.group.scale.setScalar(catScale);cat.group.position.copy(room.spawn);cat.group.rotation.y=.18;scene.add(cat.group);room.setTheme(state.theme);room.setFurniture(state.furniture);cat.setHat(state.hat);
+ [room,cat]=await Promise.all([loadImportedRoom(),loadBlenderCat()]);scene.add(room.group);catScale=room.catScale;cat.group.scale.setScalar(catScale);cat.group.position.copy(room.spawn);cat.group.rotation.y=room.spawn.yaw;scene.add(cat.group);room.setTheme(state.theme);room.setFurniture(state.furniture);cat.setHat(state.hat);
  addRoomContactShadows(room);
  keyLight.shadow.radius=6;
  scene.background.set('#e8e5dc');hemi.intensity=1.65;keyLight.intensity=1.55;keyLight.position.set(-3,8,5);keyLight.shadow.normalBias=.025;fillLight.intensity=.8;
@@ -95,24 +99,29 @@ async function init(){
 }
 function fail(message){$('#loading').hidden=true;$('#error-detail').textContent=message;$('#render-error').hidden=false;}
 function updateCamera(dt){viewHeight=THREE.MathUtils.lerp(viewHeight,targetView,Math.min(1,dt*5));focus.lerp(desiredFocus,Math.min(1,dt*5));const el=$('#scene'),aspect=el.clientWidth/Math.max(1,el.clientHeight);const fittedHeight=viewHeight/Math.min(1,aspect/1.15);camera.left=-fittedHeight*aspect/2;camera.right=fittedHeight*aspect/2;camera.top=fittedHeight/2;camera.bottom=-fittedHeight/2;camera.updateProjectionMatrix();const distance=12;camera.position.set(focus.x+Math.sin(azimuth)*Math.cos(elevation)*distance,focus.y+Math.sin(elevation)*distance,focus.z+Math.cos(azimuth)*Math.cos(elevation)*distance);camera.lookAt(focus);}
-const bubblePoint=new THREE.Vector3(),direction=new THREE.Vector3();let accumulator=0;
+const bubblePoint=new THREE.Vector3();let accumulator=0;
 function frame(stamp){requestAnimationFrame(frame);if(document.hidden){lastStamp=stamp;return;}const delta=lastStamp?Math.min((stamp-lastStamp)/1000,.1):.016;lastStamp=stamp;accumulator+=delta;if(accumulator<1/30)return;const dt=Math.min(accumulator,.07);accumulator%=1/30;time+=dt;
- if(walking){direction.subVectors(destination,cat.group.position);direction.y=0;const distance=direction.length();if(distance<.035){cat.group.position.x=destination.x;cat.group.position.z=destination.z;route.shift();if(route.length){destination.set(route[0].x,0,route[0].z);}else{walking=false;marker.visible=false;const next=pendingAction||'idle';startAction(next,next==='sleep'?10:3);if(next==='feed')bubble('咔嚓咔嚓，真香。');if(next==='sleep')bubble('在你旁边，安心睡一会儿。');}}else{direction.normalize();cat.group.position.addScaledVector(direction,Math.min(distance,dt*presentation().walkSpeed));const targetRot=Math.atan2(direction.x,direction.z);let diff=THREE.MathUtils.euclideanModulo(targetRot-cat.group.rotation.y+Math.PI,Math.PI*2)-Math.PI;cat.group.rotation.y+=diff*Math.min(1,dt*9);}}
- else if(action==='feed'){const bowl=room.targets.find(t=>t.id==='bowl').object.position;const desired=Math.atan2(bowl.x-cat.group.position.x,bowl.z-cat.group.position.z);cat.group.rotation.y+=Math.atan2(Math.sin(desired-cat.group.rotation.y),Math.cos(desired-cat.group.rotation.y))*Math.min(1,dt*4);}else if(action==='pet'){cat.group.rotation.y+=Math.atan2(Math.sin(azimuth-cat.group.rotation.y),Math.cos(azimuth-cat.group.rotation.y))*Math.min(1,dt*4);}
+ let locomoting=false,reverse=false;
+ if(walking){const result=advanceCatPose({...cat.group.position,yaw:cat.group.rotation.y},route[0],room.navigation,dt,presentation().walkSpeed);
+  cat.group.position.x=result.pose.x;cat.group.position.z=result.pose.z;cat.group.rotation.y=result.pose.yaw;locomoting=result.moving;reverse=result.reverse;
+  if(result.blocked){startAction('idle');toast('前面空间太窄，换一块空地试试。');}
+  else if(result.arrived){route.shift();if(!route.length){walking=false;marker.visible=false;const next=pendingAction||'idle';startAction(next,next==='sleep'?10:3);if(next==='feed')bubble('咔嚓咔嚓，真香。');}}
+ }
+ else if(action==='feed'){const bowl=room.targets.find(t=>t.id==='bowl').object.position;const desired=Math.atan2(bowl.x-cat.group.position.x,bowl.z-cat.group.position.z);safeCatFacing(cat.group,desired,room.navigation,dt*4);}else if(action==='pet'){safeCatFacing(cat.group,azimuth,room.navigation,dt*4);}
  if(actionEnd&&time>actionEnd){action='idle';actionEnd=0;}
  // Keep the entry pose fixed while orbiting: dragging must reveal the real side/back,
  // rather than having the cat continuously turn to face the camera.
- if(tab==='wardrobe'&&!walking&&action==='idle')cat.group.rotation.y+=Math.atan2(Math.sin(wardrobeFacing-cat.group.rotation.y),Math.cos(wardrobeFacing-cat.group.rotation.y))*Math.min(1,dt*4);
+ if(tab==='wardrobe'&&!walking&&action==='idle')safeCatFacing(cat.group,wardrobeFacing,room.navigation,dt*4);
  cat.group.position.y=THREE.MathUtils.lerp(cat.group.position.y,room.surfaceHeight(cat.group.position.x,cat.group.position.z),Math.min(1,dt*10));
  if(tab==='wardrobe')desiredFocus.copy(cat.group.position).add(new THREE.Vector3(0,presentation().wardrobeFocusHeight,0));
- cat.update(dt,time,{action,moving:walking});renderer.domElement.dataset.animation=cat.currentAnimation||action;room.update(dt,time);room.updateVisibility(azimuth);seasons?.update(dt);seasons?.animate(time,reducedLightMotion.matches);updateCamera(dt);
+ cat.update(dt,time,{action,moving:locomoting,reverse});renderer.domElement.dataset.animation=cat.currentAnimation||action;room.update(dt,time);room.updateVisibility(azimuth);seasons?.update(dt);seasons?.animate(time,reducedLightMotion.matches);updateCamera(dt);
  particlePool.forEach(p=>{if(!p.visible)return;p.position.y+=dt*p.userData.speed;p.material.opacity=Math.min(1,Math.max(0,(p.userData.until-time)*1.4));if(time>p.userData.until)p.visible=false;});
  bubblePoint.copy(cat.group.position).add(new THREE.Vector3(0,presentation().bubbleHeight,0)).project(camera);const r=$('#scene').getBoundingClientRect();$('#cat-bubble').style.left=((bubblePoint.x+1)*.5*r.width)+'px';$('#cat-bubble').style.top=((-bubblePoint.y+1)*.5*r.height)+'px';renderer.render(scene,camera);
 }
 function setupPointer(){
  const canvas=renderer.domElement,ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),plane=new THREE.Plane(new THREE.Vector3(0,1,0),0),point=new THREE.Vector3(),touches=new Map();let mouse=null;
  function change(delta){const next=adjustSceneCamera({azimuth,elevation,zoom:targetView},delta);azimuth=next.azimuth;elevation=next.elevation;targetView=next.zoom;}
- function tap({x,y}){const rect=canvas.getBoundingClientRect();ndc.set((x-rect.left)/rect.width*2-1,-(y-rect.top)/rect.height*2+1);ray.setFromCamera(ndc,camera);const catHit=ray.intersectObject(cat.group,true)[0];const furnitureHit=ray.intersectObjects(room.targets.map(t=>t.object),true)[0];if(catHit&&(!furnitureHit||catHit.distance<furnitureHit.distance)){care('pet');return;}if(furnitureHit){let o=furnitureHit.object;while(o&&!o.userData.interactive)o=o.parent;const id=o?.userData.interactive,target=room.targets.find(t=>t.id===id);if(id==='bowl')care('feed');else if(id==='ball')care('play');else if(target){moveTo(target.position,id==='bed'?'sleep':'pet');bubble(id==='box'?'去软椅旁边陪你。':id==='window'?'这个位置，阳光刚刚好。':'这里好软，想休息一会儿。');sound();}return;}if(ray.ray.intersectPlane(plane,point)&&Math.abs(point.x)<3.3&&point.z>-3&&point.z<3.2){moveTo(point);bubble('好呀，去那边看看。');sound();}}
+ function tap({x,y}){const rect=canvas.getBoundingClientRect();ndc.set((x-rect.left)/rect.width*2-1,-(y-rect.top)/rect.height*2+1);ray.setFromCamera(ndc,camera);const catHit=ray.intersectObject(cat.group,true)[0];const furnitureHit=ray.intersectObjects(room.targets.map(t=>t.object),true)[0];if(catHit&&(!furnitureHit||catHit.distance<furnitureHit.distance)){care('pet');return;}if(furnitureHit){let o=furnitureHit.object;while(o&&!o.userData.interactive)o=o.parent;const id=o?.userData.interactive,target=room.targets.find(t=>t.id===id);if(id==='bowl')care('feed');else if(id==='ball')care('play');else if(target&&moveTo(target.position,id==='bed'?'sleep':'pet')){bubble(id==='box'?'去软椅旁边陪你。':id==='window'?'这个位置，阳光刚刚好。':'这里好软，想休息一会儿。');sound();}return;}if(ray.ray.intersectPlane(plane,point)&&Math.abs(point.x)<3.3&&point.z>-3&&point.z<3.2&&moveTo(point)){bubble('好呀，去那边看看。');sound();}}
  const gestures=createSceneGestures({isScenePoint:p=>p.scene,onChange:change,onTap:p=>{if(p.scene)tap(p);}}),position=e=>({id:e.pointerId,x:e.clientX,y:e.clientY});
  const cancel=()=>{touches.clear();mouse=null;gestures.cancel();};
  // Observe every touch origin, including DOM controls. A mixed UI/scene
@@ -157,7 +166,7 @@ function capturePhoto(){
  try{const markerWasVisible=marker.visible;marker.visible=false;renderer.render(scene,camera);const source=renderer.domElement,scale=Math.min(1,1000/source.width),out=document.createElement('canvas');out.width=Math.round(source.width*scale);out.height=Math.round(source.height*scale)+56;const ctx=out.getContext('2d');ctx.drawImage(source,0,0,out.width,out.height-56);marker.visible=markerWasVisible;ctx.fillStyle='#faf8ed';ctx.fillRect(0,out.height-56,out.width,56);ctx.fillStyle='#71815f';ctx.font='16px "Microsoft YaHei", sans-serif';ctx.fillText('糯米的小屋 · 一点小小的陪伴',20,out.height-24);const createdAt=Date.now(),url=out.toDataURL('image/jpeg',.85);const saved=commit({type:'photo',value:{id:'photo-'+createdAt,createdAt,url}});renderPanel();sound(true);toast(saved?'拍好啦！照片已放入相册。':'照片仅临时保留，请立即打开照片下载。');}catch{toast('照片保存失败，请检查浏览器存储空间。');}
 }
 document.querySelector('.bottom-nav').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b&&cat)selectTab(b.dataset.tab);});
-$('#panel').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!cat)return;if(b.dataset.care){care(b.dataset.care);return;}if(b.dataset.hat){const id=b.dataset.hat;cat.setHat(id);commit({type:'hat',value:id});renderPanel();bubble(id==='none'?'不戴帽子，也很可爱。':'今天的我，有点不一样。');sound();return;}if(b.dataset.theme){room.setTheme(b.dataset.theme);commit({type:'theme',value:b.dataset.theme});renderPanel();toast('食碗和小球换上了 '+themes.find(t=>t[0]===state.theme)[1]+' 配色');sound();return;}if(b.dataset.furniture){room.setFurniture(b.dataset.furniture);commit({type:'furniture',value:b.dataset.furniture});const corner=room.getDecorTarget(state.furniture);if(corner)moveTo(corner.position,state.furniture==='bed'?'sleep':'pet');renderPanel();toast('去'+decorNames[state.furniture]+'陪一会儿。');sound();return;}if(b.id==='capture-button'){capturePhoto();return;}if(b.dataset.photo!==undefined){const p=state.photos[Number(b.dataset.photo)];if(p){$('#photo-large').src=p.url;$('#photo-download').href=p.url;$('#photo-download').download=`nuomi-${p.id}.jpg`;$('#photo-dialog').showModal();}}});
+$('#panel').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!cat)return;if(b.dataset.care){care(b.dataset.care);return;}if(b.dataset.hat){const id=b.dataset.hat;cat.setHat(id);commit({type:'hat',value:id});renderPanel();bubble(id==='none'?'不戴帽子，也很可爱。':'今天的我，有点不一样。');sound();return;}if(b.dataset.theme){room.setTheme(b.dataset.theme);commit({type:'theme',value:b.dataset.theme});renderPanel();toast('食碗和小球换上了 '+themes.find(t=>t[0]===state.theme)[1]+' 配色');sound();return;}if(b.dataset.furniture){room.setFurniture(b.dataset.furniture);commit({type:'furniture',value:b.dataset.furniture});const corner=room.getDecorTarget(state.furniture);const reached=corner&&moveTo(corner.position,state.furniture==='bed'?'sleep':'pet');renderPanel();if(reached)toast('去'+decorNames[state.furniture]+'陪一会儿。');sound();return;}if(b.id==='capture-button'){capturePhoto();return;}if(b.dataset.photo!==undefined){const p=state.photos[Number(b.dataset.photo)];if(p){$('#photo-large').src=p.url;$('#photo-download').href=p.url;$('#photo-download').download=`nuomi-${p.id}.jpg`;$('#photo-dialog').showModal();}}});
 $('#sound-button').addEventListener('click',()=>{commit({type:'mute',value:!state.muted});syncSound();sound();toast(state.muted?'音效已关闭':'音效已开启');});
 $('#help-button').addEventListener('click',()=>$('#help-dialog').showModal());$('#close-help').onclick=$('#start-playing').onclick=()=>$('#help-dialog').close();$('#close-photo').onclick=()=>$('#photo-dialog').close();
 document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}}));

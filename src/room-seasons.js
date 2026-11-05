@@ -1,6 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
-import { COZY_ROOM_SCALE, batchRoomGeometry } from './imported-room.js';
+import { COZY_ROOM_SCALE, TABLE_SHIFT, batchRoomGeometry } from './imported-room.js';
 import { sampleSeasonLightMotion } from './season-light-motion.js';
 
 export const SEASON_IDS=Object.freeze(['spring','summer','autumn','winter']);
@@ -43,8 +43,21 @@ export function createRoomSeasons({config,props,room,scene,renderer,lights,onSet
   validateSeasonConfig(config);
   const groups=Object.fromEntries(SEASON_IDS.map(id=>[id,props.getObjectByName(id)]));
   if(SEASON_IDS.some(id=>!groups[id]))throw Error('四季模型缺少季节分组');
-  const batching=batchRoomGeometry(props);
   props.name='Seasonal_Props';props.scale.setScalar(COZY_ROOM_SCALE);props.position.y=-.2*COZY_ROOM_SCALE;
+  // Seasonal cups, petals and pumpkins were authored at the old tabletop.
+  // Move each tabletop mesh in its parent's space before combining geometry.
+  props.updateMatrixWorld(true);
+  props.traverse(o=>{
+    if (!o.isMesh) return;
+    o.geometry.computeBoundingBox();
+    const box=o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+    const center=box.getCenter(new THREE.Vector3());
+    if (center.x < -1.19 || center.x > .48 || center.z < .13 || center.z > 1 || box.min.y < .70) return;
+    const from=o.getWorldPosition(new THREE.Vector3());
+    const to=from.clone().add(new THREE.Vector3(TABLE_SHIFT.x,0,TABLE_SHIFT.z));
+    o.position.add(o.parent.worldToLocal(to).sub(o.parent.worldToLocal(from)));
+  });
+  const batching=batchRoomGeometry(props);
   props.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
   room.group.add(props);
 

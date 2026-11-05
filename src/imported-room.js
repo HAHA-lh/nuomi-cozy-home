@@ -1,12 +1,72 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
-import { createRoomNavigation } from './room-navigation.js';
+import { createCatNavigation } from './cat-navigation.js';
+import { BIRMAN_FOOTPRINT } from './cat-collision.js';
 
 export const COZY_ROOM_URL=new URL('../assets/cozy-room-final.glb',import.meta.url);
 export const COZY_ROOM_SCALE=1.7;
 export const COZY_ROOM_CAT_SCALE=.50;
 export const COZY_ROOM_VIEW=Object.freeze({azimuth:.68,elevation:.58,height:9.8,focus:[-.38,1.8,0]});
+export const TABLE_SHIFT = Object.freeze({x:-.56,z:-.49});
+const BOWL = {x:-2.26,z:2.60};
+const BALL = {x:1.85,z:2.76,travel:.10};
+
+function arrangeFurniture(components) {
+  const groups = [
+    [['F02','T07'],.85,-.45], // chair and its cushion
+    [['F03'],2.61,.32],       // round pouf
+    [['T08'],4.66,-2.00],     // window cushion beside the reading chair
+    [['F04','P04'],TABLE_SHIFT.x,TABLE_SHIFT.z],
+    [['D05','O03','O05'],-.35,-.25], // lamp, books and tray beside the table
+  ];
+  for (const [ids,x,z] of groups) {
+    for (const id of ids) {
+      components[id].position.x+=x/COZY_ROOM_SCALE;
+      components[id].position.z+=z/COZY_ROOM_SCALE;
+    }
+  }
+}
+
+function propFootprint(id,position,radius,travel,top) {
+  // Circumscribe the complete swept capsule, including both ball extremes.
+  const r=radius/Math.cos(Math.PI/24), polygon=[];
+  for(let i=0;i<=24;i++) {
+    const theta=(i/12-.5)*Math.PI;
+    const offset=i<=12?travel:-travel;
+    polygon.push({x:position.x+offset+Math.cos(theta)*r,z:position.z+Math.sin(theta)*r});
+    if(i===12) polygon.push({x:position.x-travel,z:position.z+r});
+  }
+  return {id,polygon,minX:position.x-r-travel,maxX:position.x+r+travel,minZ:position.z-r,maxZ:position.z+r,maxY:top};
+}
+
+// Use the actual curved furniture outlines, not square bounds around round
+// cushions. Only geometry at cat height can obstruct floor movement.
+export function roomFootprint(object){
+  object.updateWorldMatrix(true,true);
+  const points=[], ceiling=1.38, box=new THREE.Box3().setFromObject(object);
+  object.traverse(o=>{
+    if(!o.isMesh)return;
+    const geometry=o.geometry, attr=geometry.attributes.position, indices=geometry.index;
+    const vertices=Array.from({length:attr.count},(_,i)=>new THREE.Vector3().fromBufferAttribute(attr,i).applyMatrix4(o.matrixWorld));
+    for(const v of vertices) if(v.y<=ceiling) points.push({x:v.x,z:v.z});
+    // Clip crossing edges too: a tall, slanted surface can cross the cat's
+    // height even if none of its upper vertices is inside the slab.
+    for(let i=0;i<(indices?.count??attr.count);i+=3) for(let j=0;j<3;j++){
+      const u=i+j,v=i+(j+1)%3;
+      const a=vertices[indices?indices.getX(u):u], b=vertices[indices?indices.getX(v):v];
+      if(a.y<=ceiling && b.y>ceiling || b.y<=ceiling && a.y>ceiling){
+        const t=(ceiling-a.y)/(b.y-a.y);
+        points.push({x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t});
+      }
+    }
+  });
+  if(points.length<3)return null;
+  points.sort((a,b)=>a.x-b.x||a.z-b.z);
+  const cross=(a,b,c)=>(b.x-a.x)*(c.z-a.z)-(b.z-a.z)*(c.x-a.x),half=items=>{const h=[];for(const pt of items){while(h.length>=2&&cross(h.at(-2),h.at(-1),pt)<=0)h.pop();h.push(pt);}return h;};
+  const lower=half(points),upper=half([...points].reverse());lower.pop();upper.pop();const polygon=[...lower,...upper];
+  return {id:object.name.slice(0,3),polygon,maxY:box.max.y,minX:Math.min(...polygon.map(p=>p.x)),maxX:Math.max(...polygon.map(p=>p.x)),minZ:Math.min(...polygon.map(p=>p.z)),maxZ:Math.max(...polygon.map(p=>p.z))};
+}
 
 // Merge only compatible opaque primitives within each reusable furniture group.
 // Original materials, UVs, normals and separate interactive groups are retained.
@@ -37,41 +97,46 @@ export function batchRoomGeometry(root){
 export function createImportedRoom(model){
   const group=new THREE.Group();group.name='CozyRoom_Final_Integration';
   const components=Object.fromEntries(model.children.map(o=>[o.name.slice(0,3),o]));
+  arrangeFurniture(components);
   const batching=batchRoomGeometry(model);
   model.scale.setScalar(COZY_ROOM_SCALE);model.position.y=-.2*COZY_ROOM_SCALE;group.add(model);
   group.updateMatrixWorld(true);
   model.traverse(o=>{if(o.isMesh){o.castShadow=!/curtain/i.test(o.name);o.receiveShadow=true;}});
-  const bounds={minX:-2.03*COZY_ROOM_SCALE,maxX:2.03*COZY_ROOM_SCALE,minZ:-1.68*COZY_ROOM_SCALE,maxZ:1.77*COZY_ROOM_SCALE};
-  const obstacles=['F01','F02','F03','F04','F05','F06'].map(id=>{
-    const b=new THREE.Box3().setFromObject(components[id]);return {minX:b.min.x,maxX:b.max.x,minZ:b.min.z,maxZ:b.max.z};
-  });
-  // Plant canopies are not solid walls: their pot footprints block the floor.
-  for(const [x,z,r] of [[-1.52,.87,.22],[-1.46,-.87,.19],[-1.15,-1.17,.20]])obstacles.push({minX:(x-r)*1.7,maxX:(x+r)*1.7,minZ:(z-r)*1.7,maxZ:(z+r)*1.7});
-  // Native walk skin at display scale .5 has approximately .295 half-width.
-  const navigation=createRoomNavigation(bounds,obstacles,.31,.10),targets=[];
-  const vec=p=>new THREE.Vector3(p.x,0,p.z);
-  function target(id,label,object,x,z){const safe=navigation.clamp({x,z});if(!safe)throw Error('房间缺少可走动区域');targets.push({id,label,object,position:vec(safe)});object.traverse(o=>o.userData.interactive=id);}
-  target('bed','沙发旁休息',components.F01,1.48,-.42);
-  target('window','窗边晒太阳',components.A04,-2.66,-.4);
-  target('box','软椅旁陪伴',components.F02,2.95,2.28);
+  const bounds={minX:-3.253,maxX:3.65,minZ:-2.89,maxZ:3.15};
+  const obstacles=Object.entries(components).filter(([id,o])=>{
+    if (!/^[FPDO]\d\d$/.test(id) && id!=='T08') return false;
+    const b=new THREE.Box3().setFromObject(o);
+    return b.min.y<1.38 && b.max.y>.025;
+  }).map(([,o])=>roomFootprint(o)).filter(Boolean);
+  obstacles.push(propFootprint('bowl',BOWL,.25,0,.17),propFootprint('ball',BALL,.12,BALL.travel,.24));
+  const navigation=createCatNavigation(bounds,obstacles,.12,BIRMAN_FOOTPRINT),targets=[];
+  const vec=p=>Object.assign(new THREE.Vector3(p.x,0,p.z),{yaw:p.yaw});
+  function target(id,label,object,x,z,yaw){
+    const position=vec({x,z,yaw:yaw??Math.atan2(object.position.x-x,object.position.z-z)});
+    targets.push({id,label,object,position});
+    object.traverse(o=>o.userData.interactive=id);
+  }
+  target('bed','沙发旁休息',components.F01,.947,-.01,Math.PI);
+  target('window','窗边晒太阳',components.A04,-1.693,1.19,3.8956);
+  target('box','软椅旁陪伴',components.F02,1.187,1.43,1.2708);
   const white=new THREE.MeshStandardMaterial({color:'#f5efdc',roughness:.65});
   const accent=new THREE.MeshStandardMaterial({color:'#abc587',roughness:.75});
   const food=new THREE.MeshStandardMaterial({color:'#8a6545',roughness:1});
   function add(parent,geometry,material,x,y,z){const m=new THREE.Mesh(geometry,material);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;parent.add(m);return m;}
-  const bowl=new THREE.Group();bowl.name='Gameplay_FoodBowl';bowl.position.set(-2.40,.045,2.59);group.add(bowl);
+  const bowl=new THREE.Group();bowl.name='Gameplay_FoodBowl';bowl.position.set(BOWL.x,.045,BOWL.z);group.add(bowl);
   add(bowl,new THREE.CylinderGeometry(.24,.21,.07,36),accent,0,0,0);
   add(bowl,new THREE.TorusGeometry(.18,.045,12,40),white,0,.07,0).rotation.x=Math.PI/2;
   add(bowl,new THREE.CylinderGeometry(.16,.16,.03,32),food,0,.045,0);
-  target('bowl','吃点猫粮',bowl,-1.93,2.48);
-  const ball=new THREE.Group();ball.name='Gameplay_Ball';ball.position.set(1.02,.11,2.87);group.add(ball);
+  target('bowl','吃点猫粮',bowl,-1.213,2.27);
+  const ball=new THREE.Group();ball.name='Gameplay_Ball';ball.position.set(BALL.x,.12,BALL.z);group.add(ball);
   add(ball,new THREE.SphereGeometry(.11,24,16),accent,0,0,0);
   const stripe=add(ball,new THREE.TorusGeometry(.109,.009,8,32),white,0,0,0);stripe.rotation.x=.7;
-  target('ball','追追小球',ball,1.2,2.75);
+  target('ball','追追小球',ball,.947,2.39);
   const restBall=ball.position.clone();let playUntil=0;
   const station=new THREE.Mesh(new THREE.RingGeometry(.24,.27,40),new THREE.MeshBasicMaterial({color:'#bbc790',transparent:true,opacity:.38,depthWrite:false,side:THREE.DoubleSide}));
   station.rotation.x=-Math.PI/2;station.position.y=.025;station.visible=false;group.add(station);
   const corners={box:'box',bed:'bed',perch:'window'};
-  const spawn=vec(navigation.clamp({x:-1.17,z:2.38}));
+  const spawn=vec({x:.30,z:1.75,yaw:COZY_ROOM_VIEW.azimuth});
   let reflectionProbe,reflectionCamera;
   return {group,model,targets,components,navigation,spawn,catScale:COZY_ROOM_CAT_SCALE,view:COZY_ROOM_VIEW,
     imported:true,batching,
@@ -91,7 +156,7 @@ export function createImportedRoom(model){
     surfaceHeight(x,z){return x>=-1.38*1.7&&x<=1.18*1.7&&z>=-.53*1.7&&z<=1.17*1.7?.068:0;},
     updateVisibility(yaw){for(const id of ['A03','A04'])components[id].visible=yaw>-.05;},
     play(time){playUntil=time+3;},
-    update(dt,time){if(time<playUntil){ball.position.x=restBall.x+Math.sin(time*4)*.10;ball.rotation.x+=dt*4;}else ball.position.lerp(restBall,Math.min(1,dt*6));},
+    update(dt,time){if(time<playUntil){ball.position.x=restBall.x+Math.sin(time*4)*BALL.travel;ball.rotation.x+=dt*4;}else ball.position.lerp(restBall,Math.min(1,dt*6));},
   };
 }
 
