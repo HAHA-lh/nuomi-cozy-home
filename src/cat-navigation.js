@@ -1,9 +1,9 @@
 import { createCatCollision } from './cat-collision.js';
 
-const TURN = Math.PI / 4;
-const HEADINGS = Array.from({length:8}, (_, i) => ({
-  yaw:i*TURN, dx:Math.round(Math.sin(i*TURN)), dz:Math.round(Math.cos(i*TURN)),
-}));
+const HEADINGS = [[0,1],[1,2],[1,1],[2,1],[1,0],[2,-1],[1,-1],[1,-2],
+  [0,-1],[-1,-2],[-1,-1],[-2,-1],[-1,0],[-2,1],[-1,1],[-1,2]]
+  .map(([dx,dz])=>({dx,dz,yaw:Math.atan2(dx,dz)}));
+const COUNT=HEADINGS.length;
 const angle = (a,b) => Math.atan2(Math.sin(b-a), Math.cos(b-a));
 const distance = (a,b) => Math.hypot(a.x-b.x,a.z-b.z);
 const pose = p => ({x:p.x,z:p.z,yaw:p.yaw ?? 0,y:0});
@@ -42,16 +42,16 @@ export function createCatNavigation(bounds, obstacles, step=.16, footprint) {
   const collision = createCatCollision(bounds, obstacles, footprint);
   const cols = Math.floor((bounds.maxX-bounds.minX)/step)+1;
   const rows = Math.floor((bounds.maxZ-bounds.minZ)/step)+1;
-  const nodes = Array.from({length:cols*rows*8}, (_, i) => {
-    const cell=Math.floor(i/8);
-    return {x:bounds.minX+(cell%cols)*step,z:bounds.minZ+Math.floor(cell/cols)*step,yaw:HEADINGS[i%8].yaw,y:0};
+  const nodes = Array.from({length:cols*rows*COUNT}, (_, i) => {
+    const cell=Math.floor(i/COUNT);
+    return {x:bounds.minX+(cell%cols)*step,z:bounds.minZ+Math.floor(cell/cols)*step,yaw:HEADINGS[i%COUNT].yaw,y:0};
   });
   const free = nodes.map(collision.isPoseClear);
   const edgeCache = new Map();
 
-  function connector(a,b,backwards=false) {
+  function connect(a,b) {
     const length = distance(a,b);
-    const yaw = length < 1e-7 ? a.yaw : Math.atan2(b.x-a.x,b.z-a.z)+(backwards?Math.PI:0);
+    const yaw = length < 1e-7 ? a.yaw : Math.atan2(b.x-a.x,b.z-a.z);
     const turned = {...a,yaw}, end = {...pose(b),yaw};
     const route = [];
     if (Math.abs(angle(a.yaw,yaw))>1e-6) {
@@ -68,25 +68,14 @@ export function createCatNavigation(bounds, obstacles, step=.16, footprint) {
     }
     return route.length ? route : [end];
   }
-  function connect(a,b,shortReverse=true) {
-    const front = connector(a,b);
-    if (front || !shortReverse || distance(a,b)>.65) return front;
-    const back=connector(a,b,true);
-    if (back || distance(a,b)>.42) return back;
-    // Replanning halfway through a sideways step must also be able to leave it.
-    const end={...pose(b),yaw:a.yaw};
-    if (!collision.sweepClear(a,end)) return null;
-    if (b.yaw===undefined || Math.abs(angle(a.yaw,b.yaw))<1e-6) return [end];
-    return collision.sweepClear(end,b) ? [end,pose(b)] : null;
-  }
   function nearby(p) {
     const cx=Math.round((p.x-bounds.minX)/step), cz=Math.round((p.z-bounds.minZ)/step);
     const result=[];
     for (let z=Math.max(0,cz-3); z<=Math.min(rows-1,cz+3); z++) {
       for (let x=Math.max(0,cx-3); x<=Math.min(cols-1,cx+3); x++) {
         if (Math.hypot(bounds.minX+x*step-p.x,bounds.minZ+z*step-p.z)>=step*2.5) continue;
-        for (let h=0;h<8;h++) {
-          const id=(z*cols+x)*8+h;
+        for (let h=0;h<COUNT;h++) {
+          const id=(z*cols+x)*COUNT+h;
           if (free[id]) result.push(id);
         }
       }
@@ -95,17 +84,15 @@ export function createCatNavigation(bounds, obstacles, step=.16, footprint) {
   }
   function edges(i) {
     if (edgeCache.has(i)) return edgeCache.get(i);
-    const cell=Math.floor(i/8), x=cell%cols, z=Math.floor(cell/cols), h=i%8;
-    const candidates=[
-      [cell*8+(h+1)%8,.23*TURN], [cell*8+(h+7)%8,.23*TURN],
-    ];
-    for (let travelHeading=0;travelHeading<8;travelHeading++) {
-      const {dx,dz}=HEADINGS[travelHeading];
+    const cell=Math.floor(i/COUNT), x=cell%cols, z=Math.floor(cell/cols), h=i%COUNT;
+    const candidates=[(h+1)%COUNT,(h+COUNT-1)%COUNT].map(j=>[cell*COUNT+j,.23*Math.abs(angle(HEADINGS[h].yaw,HEADINGS[j].yaw))]);
+    {
+      const {dx,dz}=HEADINGS[h];
       const nx=x+dx, nz=z+dz;
       if (nx>=0 && nx<cols && nz>=0 && nz<rows) {
-        const deviation=Math.abs(angle(HEADINGS[h].yaw,HEADINGS[travelHeading].yaw));
-        // A lateral step lets the cat line up for a turn in a narrow passage.
-        candidates.push([(nz*cols+nx)*8+h,step*Math.hypot(dx,dz)*(1+1.4*deviation)]);
+        // Travel only along the nose direction. Turns are explicit, checked
+        // edges: neither reverse travel nor lateral sliding is a valid path.
+        candidates.push([(nz*cols+nx)*COUNT+h,step*Math.hypot(dx,dz)]);
       }
     }
     const valid=candidates.filter(([j])=>free[j] && collision.sweepClear(nodes[i],nodes[j]));
@@ -122,7 +109,7 @@ export function createCatNavigation(bounds, obstacles, step=.16, footprint) {
       result.push(point);
     }
     // Remove grid zigzags only when the complete turn/move/arrival sequence is
-    // clear. Keep necessary reverse/side steps in the narrow table passages.
+    // clear. All connectors use turn-then-forward motion.
     if(!result.length)return [pose(start)];
     const smooth=[];let previous=start,cursor=0;
     while(cursor<result.length){
@@ -188,13 +175,19 @@ export function createCatNavigation(bounds, obstacles, step=.16, footprint) {
     return best && {...best};
   }
   function pathNear(from,to,maxDistance=.42) {
+    const escapable=route=>route.length&&path(route.at(-1),from).length;
     const exact=path(from,to);
-    if(exact.length)return exact;
+    if(escapable(exact))return exact;
+    // A valid arrival can still point into a dead end. Try a different final
+    // facing at the same spot before choosing a nearby standing position.
+    if(exact.length&&to.yaw===undefined)for(const {yaw} of HEADINGS){
+      const route=path(from,{...to,yaw});if(escapable(route))return route;
+    }
     // A tap just beside a leg may not leave room for the cat's centre. Pick a
     // nearby reachable stance, never teleport or route through the furniture.
     const candidates=nodes.filter((p,i)=>free[i]&&distance(p,to)<=maxDistance)
       .sort((a,b)=>distance(a,to)-distance(b,to)+.015*(distance(a,from)-distance(b,from)));
-    for(const candidate of candidates){const route=path(from,candidate);if(route.length)return route;}
+    for(const candidate of candidates){const route=path(from,candidate);if(escapable(route))return route;}
     return [];
   }
   function isWalkable(p) {
@@ -208,12 +201,13 @@ export function createCatNavigation(bounds, obstacles, step=.16, footprint) {
 }
 
 export function advanceCatPose(from,target,navigation,dt,speed,settle=false) {
-  const next=pose(from), delta=angle(from.yaw,target.yaw??from.yaw);
+  const length=distance(from,target);
+  const heading=length>1e-7?Math.atan2(target.x-from.x,target.z-from.z):target.yaw??from.yaw;
+  const next=pose(from), delta=angle(from.yaw,heading);
   if (Math.abs(delta)>1e-6) {
     const turnRate=Math.min(3.4,Math.max(.55,Math.sqrt(12*Math.abs(delta))));
     next.yaw+=Math.sign(delta)*Math.min(Math.abs(delta),dt*turnRate);
   } else {
-    const length=distance(from,target);
     if (length>1e-7) {
       const approach=settle ? Math.min(speed,Math.max(.15,Math.sqrt(1.8*length))) : speed;
       const fraction=Math.min(1,dt*approach/length);
@@ -224,8 +218,7 @@ export function advanceCatPose(from,target,navigation,dt,speed,settle=false) {
   if (!navigation.sweepClear(from,next)) return {pose:from,blocked:true,arrived:false,moving:false};
   const arrived=distance(next,target)<1e-7 && Math.abs(angle(next.yaw,target.yaw??next.yaw))<1e-6;
   const turning=Math.abs(angle(from.yaw,next.yaw))>1e-7;
-  const forward=(next.x-from.x)*Math.sin(next.yaw)+(next.z-from.z)*Math.cos(next.yaw);
-  return {pose:next,blocked:false,arrived,moving:turning||distance(from,next)>1e-7,reverse:forward < -1e-7};
+  return {pose:next,blocked:false,arrived,moving:turning||distance(from,next)>1e-7,reverse:false};
 }
 
 export function safeCatFacing(group,heading,navigation,fraction) {

@@ -17,11 +17,12 @@ const BALL = {x:1.85,z:2.76,travel:.10};
 
 function arrangeFurniture(components) {
   const groups = [
+    [['F01','T02','T03','T04','T05','T06'],0,-.20], // open a forward turning lane behind the centred table
     [['F02','T07'],.85,-.45], // chair and its cushion
     [['F03'],2.61,.32],       // round pouf
     [['T08'],4.66,-2.00],     // window cushion beside the reading chair
     [['F04','P04'],TABLE_SHIFT.x,TABLE_SHIFT.z],
-    [['D05','O03','O05'],-.35,-.25], // keep the reading lamp clear of the window approach
+    [['D05','O03','O05'],-.85,-.65], // keep small floor props against the wall, clear of forward turns
   ];
   for (const [ids,x,z] of groups) {
     for (const id of ids) {
@@ -142,7 +143,7 @@ export function createImportedRoom(model){
   const batching=batchRoomGeometry(model);
   obstacles.push(propFootprint('bowl',BOWL,.25,0,.17),propFootprint('ball',BALL,.12,BALL.travel,.24));
   const profile=layers=>({full:layers.flatMap(layer=>layer.parts.flat()),layers});
-  const navigation=createCatNavigation(bounds,obstacles,.12,profile(BIRMAN_CLEARANCE_LAYERS)),targets=[];
+  const navigation=createCatNavigation(bounds,obstacles,.08,profile(BIRMAN_CLEARANCE_LAYERS)),targets=[];
   const relaxedClearance=createCatCollision(bounds,obstacles,profile(BIRMAN_RELAXED_LAYERS));
   const vec=p=>Object.assign(new THREE.Vector3(p.x,0,p.z),{yaw:p.yaw});
   function target(id,label,object,x,z,yaw){
@@ -150,8 +151,8 @@ export function createImportedRoom(model){
     targets.push({id,label,object,position});
     object.traverse(o=>o.userData.interactive=id);
   }
-  target('bed','沙发旁休息',components.F01,1.067,-.01,Math.PI);
-  target('window','窗边晒太阳',components.A04,-1.57,1.55,3.8956);
+  target('bed','沙发旁休息',components.F01,1.307,-.01,Math.PI);
+  target('window','窗边晒太阳',components.A04,-1.33,1.55,Math.PI*1.25);
   target('box','软椅旁陪伴',components.F02,1.067,1.43,Math.PI/2);
   const white=new THREE.MeshStandardMaterial({color:'#f5efdc',roughness:.65});
   const accent=new THREE.MeshStandardMaterial({color:'#abc587',roughness:.75});

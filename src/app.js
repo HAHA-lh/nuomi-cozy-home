@@ -116,7 +116,7 @@ function fail(message){$('#loading').hidden=true;$('#error-detail').textContent=
 function updateCamera(dt){viewHeight=THREE.MathUtils.lerp(viewHeight,targetView,Math.min(1,dt*5));focus.lerp(desiredFocus,Math.min(1,dt*5));const el=$('#scene'),aspect=el.clientWidth/Math.max(1,el.clientHeight);const fittedHeight=viewHeight/Math.min(1,aspect/1.15);camera.left=-fittedHeight*aspect/2;camera.right=fittedHeight*aspect/2;camera.top=fittedHeight/2;camera.bottom=-fittedHeight/2;camera.updateProjectionMatrix();const distance=12;camera.position.set(focus.x+Math.sin(azimuth)*Math.cos(elevation)*distance,focus.y+Math.sin(elevation)*distance,focus.z+Math.cos(azimuth)*Math.cos(elevation)*distance);camera.lookAt(focus);}
 const bubblePoint=new THREE.Vector3();let accumulator=0;
 function frame(stamp){requestAnimationFrame(frame);if(document.hidden){lastStamp=stamp;return;}const delta=lastStamp?Math.min((stamp-lastStamp)/1000,.1):.016;lastStamp=stamp;accumulator+=delta;if(accumulator<1/30)return;const dt=Math.min(accumulator,.07);accumulator%=1/30;time+=dt;
- let locomoting=false,reverse=false,strideRate=1;
+ let locomoting=false,strideRate=1;
  const pose={x:cat.group.position.x,z:cat.group.position.z,yaw:cat.group.rotation.y};
  const facing=action==='pet'?azimuth:tab==='wardrobe'&&action==='idle'?wardrobeFacing:null;
  const wantsTurn=facing!==null&&Math.abs(Math.atan2(Math.sin(facing-pose.yaw),Math.cos(facing-pose.yaw)))>.01;
@@ -127,7 +127,7 @@ function frame(stamp){requestAnimationFrame(frame);if(document.hidden){lastStamp
  if(walking&&tailClearance>=1){const result=advanceCatPose({...cat.group.position,yaw:cat.group.rotation.y},route[0],room.navigation,dt,presentation().walkSpeed,route.length===1 || (route[1] && Math.hypot(route[0].x-route[1].x,route[0].z-route[1].z)<1e-6));
   const travel=Math.hypot(result.pose.x-cat.group.position.x,result.pose.z-cat.group.position.z);
   strideRate=travel>1e-6?Math.max(.32,Math.min(1.6,travel/(Math.max(.001,dt)*1.25*catScale))):.48;
-  cat.group.position.x=result.pose.x;cat.group.position.z=result.pose.z;cat.group.rotation.y=result.pose.yaw;locomoting=result.moving;reverse=result.reverse;
+  cat.group.position.x=result.pose.x;cat.group.position.z=result.pose.z;cat.group.rotation.y=result.pose.yaw;locomoting=result.moving;
   if(result.blocked){startAction('idle');toast('前面空间太窄，换一块空地试试。');}
   else if(result.arrived){route.shift();if(!route.length){walking=false;marker.visible=false;const next=pendingAction||'idle';startAction(next,next==='sleep'?10:3);if(next==='feed')bubble('咔嚓咔嚓，真香。');}}
  }
@@ -138,7 +138,7 @@ function frame(stamp){requestAnimationFrame(frame);if(document.hidden){lastStamp
  if(tab==='wardrobe'&&!walking&&action==='idle'&&tailClearance>=1)safeCatFacing(cat.group,wardrobeFacing,room.navigation,dt*4);
  cat.group.position.y=THREE.MathUtils.lerp(cat.group.position.y,room.surfaceHeight(cat.group.position.x,cat.group.position.z),Math.min(1,dt*10));
  if(tab==='wardrobe')desiredFocus.copy(cat.group.position).add(new THREE.Vector3(0,presentation().wardrobeFocusHeight,0));
- cat.update(dt,time,{action,moving:locomoting,reverse,strideRate,tailClearance});renderer.domElement.dataset.animation=cat.currentAnimation||action;room.update(dt,time);room.updateVisibility(azimuth);seasons?.update(dt);seasons?.animate(time,reducedLightMotion.matches);updateCamera(dt);
+ cat.update(dt,time,{action,moving:locomoting,strideRate,tailClearance});renderer.domElement.dataset.animation=cat.currentAnimation||action;room.update(dt,time);room.updateVisibility(azimuth);seasons?.update(dt);seasons?.animate(time,reducedLightMotion.matches);updateCamera(dt);
  particlePool.forEach(p=>{if(!p.visible)return;p.position.y+=dt*p.userData.speed;p.material.opacity=Math.min(1,Math.max(0,(p.userData.until-time)*1.4));if(time>p.userData.until)p.visible=false;});
  bubblePoint.copy(cat.group.position).add(new THREE.Vector3(0,presentation().bubbleHeight,0)).project(camera);const r=$('#scene').getBoundingClientRect();$('#cat-bubble').style.left=((bubblePoint.x+1)*.5*r.width)+'px';$('#cat-bubble').style.top=((-bubblePoint.y+1)*.5*r.height)+'px';renderer.render(scene,camera);
 }

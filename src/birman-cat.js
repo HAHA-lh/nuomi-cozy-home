@@ -156,7 +156,7 @@ export function createBirmanCatController(model, animations = []) {
     if (disposed || !Number.isFinite(dt) || !Number.isFinite(time) || dt < 0) return;
     dt = THREE.MathUtils.clamp(dt, 0, .1);
     selectClip(resolveBirmanClip(state, clips.keys()));
-    if (current?.name === 'walk') current.action.setEffectiveTimeScale((state.reverse ? -1 : 1)*(state.strideRate ?? 1));
+    if (current?.name === 'walk') current.action.setEffectiveTimeScale(THREE.MathUtils.clamp(state.strideRate??1,.15,1.6));
     // Restore mixer-owned values first: constant animation tracks may skip
     // writing identical values and must not accumulate our procedural override.
     tailClearance.restore();

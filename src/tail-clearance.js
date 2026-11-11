@@ -12,6 +12,10 @@ export function createTailClearance(model, animations) {
   const modelInverse=model.getWorldQuaternion(new THREE.Quaternion()).invert();
   const raised=bones.map(bone=>({position:bone.position.clone(),quaternion:bone.quaternion.clone(),scale:bone.scale.clone(),
     root:!/^SKN_tail_/.test(bone.parent.name),modelQuaternion:modelInverse.clone().multiply(bone.getWorldQuaternion(new THREE.Quaternion()))}));
+  // Bring the tail upward while manoeuvring so forward-only turns do not need
+  // the large footprint of a tail held straight behind the body.
+  const tuck=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),.65);
+  for(const pose of raised)if(pose.root)pose.modelQuaternion.premultiply(tuck);
   sampler.stopAllAction();sampler.uncacheRoot(model);
   const animated=bones.map(bone=>({position:bone.position.clone(),quaternion:bone.quaternion.clone(),scale:bone.scale.clone()}));
   let overridden=false;
