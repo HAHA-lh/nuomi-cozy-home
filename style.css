@@ -4,3 +4,36 @@
 @media(max-width:700px){.topbar{height:72px;padding:0 17px}.brand-mark{width:38px;height:38px;border-radius:12px}.brand h1{font-size:18px}.brand p{font-size:7px;letter-spacing:1.7px}.top-actions{gap:7px}.top-actions .icon-button{width:33px;height:33px}.app-shell{display:block}.scene-section{height:56vh;min-height:380px;max-height:560px}.scene-heading{top:17px;left:19px}.scene-heading h2{font-size:17px;letter-spacing:1px;margin:6px 0}.scene-heading p{font-size:9px;margin-top:8px}.scene-heading .eyebrow{font-size:7px;letter-spacing:1.3px}.view-controls{top:18px;right:13px;gap:7px}.view-controls button{width:31px;height:31px;font-size:17px}.view-controls svg{width:17px;height:17px}.scene-caption{bottom:13px;left:15px;right:15px;flex-direction:row;align-items:center}.caption-pill{font-size:9px;padding:7px 9px}.prototype-note{font-size:7px;max-width:105px;line-height:1.8}.sidebar{border-left:0;border-top:1px solid #e2e3d5;border-radius:24px 24px 0 0;margin-top:-2px;padding:23px 22px 123px}.cat-card h2{font-size:21px}.cat-card h2 span{font-size:10px}.stats{margin:20px 0 23px;padding-bottom:20px;gap:24px}.bottom-nav{width:calc(100% - 28px);max-width:440px;height:70px;left:50%;bottom:max(12px,env(safe-area-inset-bottom));border-radius:23px}.care-grid{grid-template-columns:repeat(4,1fr);gap:7px}.care-button{font-size:10px;min-height:87px;gap:8px;border-radius:12px}.care-button small{font-size:7px}.care-button svg{width:23px}.hat-grid{grid-template-columns:repeat(4,1fr);gap:7px}.hat-illustration{height:65px;margin:5px 5px 9px}.hat-illustration svg{width:50px;height:48px}.hat-card strong{font-size:10px;margin:0 7px}.hat-card small{font-size:8px;margin:5px 7px 0}.story-card{padding:15px;margin-top:16px}.save-status{margin-top:19px}.toast{bottom:96px;font-size:11px}.cat-bubble{font-size:11px}.badge{right:18px}.album-grid{grid-template-columns:repeat(2,1fr)}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 .season-picker{position:absolute;top:138px;left:36px;z-index:3;max-width:350px}.season-controls{display:flex;gap:4px;background:#fffdf3e8;border:1px solid #fffdf9;border-radius:17px;padding:5px;box-shadow:0 4px 18px #4152330c;backdrop-filter:blur(10px);width:max-content}.season-controls button{border:1px solid transparent;background:transparent;border-radius:12px;min-width:55px;min-height:39px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#78846b}.season-controls button span{font-size:19px}.season-controls button[data-season=spring].selected{background:#eadde4;color:#836d7d;border-color:#d8bbcd}.season-controls button[data-season=summer].selected{background:#dbead7;color:#5b7e62;border-color:#b7d1af}.season-controls button[data-season=autumn].selected{background:#f0dec5;color:#947044;border-color:#dcbd91}.season-controls button[data-season=winter].selected{background:#dce6f1;color:#637e9b;border-color:#b6c9de}.season-picker p{margin:8px 2px 0;font-size:10px;line-height:1.6;color:#7b8473;max-width:300px;text-shadow:0 1px 2px #ffffffe6;pointer-events:none}.season-controls button:disabled{cursor:default;opacity:.45}@media(max-width:960px){.season-picker{left:24px;top:130px;max-width:260px}.season-picker p{max-width:240px}}@media(max-width:700px){.season-picker{left:18px;top:101px;max-width:calc(100% - 70px)}.season-controls{border-radius:14px;padding:3px;gap:2px}.season-controls button{min-width:46px;min-height:34px;font-size:11px;border-radius:10px;gap:5px}.season-controls button span{font-size:16px}.season-picker p{display:none}}
+
+/* Keep the game and its controls usable inside the studio's resizable pane. */
+.topbar { height: 58px; padding-inline: clamp(14px, 2.5vw, 32px); }
+.brand-mark { width: 36px; height: 36px; }
+.brand h1 { font-size: 18px; margin: 0; }
+.brand p { display: none; }
+.app-shell { --controls-width: clamp(220px, 24vw, 304px); grid-template-columns: minmax(0, 1fr) var(--controls-width); min-height: calc(100dvh - 58px); }
+.scene-section { height: calc(100dvh - 58px); min-height: 320px; }
+.scene-heading { top: 12px; left: 16px; }
+.scene-heading p { margin: 0; }
+.season-picker { top: 37px; left: 14px; }
+.season-picker p { display: none; }
+.view-controls { top: 12px; right: 12px; }
+.sidebar { padding: 20px 16px; max-height: calc(100dvh - 58px); overflow-y: auto; }
+.bottom-nav { position: static; transform: none; width: 100%; max-width: none; height: 52px; margin: 0 0 18px; border-radius: 13px; padding: 3px; box-shadow: none; }
+.bottom-nav button { border-radius: 10px; gap: 2px; }
+.bottom-nav button svg { width: 19px; height: 19px; }
+.stats { margin: 16px 0; padding-bottom: 14px; }
+.care-button { min-height: 74px; }
+@media (max-width: 700px) {
+  .app-shell { display: block; }
+  .scene-section { height: clamp(255px, 59dvh, 660px); min-height: 0; max-height: none; }
+  .sidebar { max-height: none; overflow: visible; padding: 15px 16px 24px; }
+  .scene-caption { bottom: 9px; }
+  .stats { margin: 12px 0; padding-bottom: 10px; }
+  .bottom-nav { height: 46px; margin-bottom: 14px; }
+}
+@media (max-height: 540px) and (min-width: 620px) {
+  .app-shell { display: grid; }
+  .scene-section, .sidebar { height: calc(100dvh - 58px); min-height: 235px; max-height: none; }
+  .sidebar { overflow: auto; }
+  .care-grid { grid-template-columns: repeat(2, 1fr); }
+}

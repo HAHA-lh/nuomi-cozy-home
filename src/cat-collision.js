@@ -47,7 +47,9 @@ function intersects(from, to, planes, padding) {
 export function createCatCollision(bounds, obstacles, profile = DEFAULT_FOOTPRINT) {
   const footprint = profile.full ?? profile;
   const radius = Math.max(...footprint.map(([x,z]) => Math.hypot(x,z)));
-  const solids = obstacles.map(box => {
+  // Keep separate convex pieces and vertical slabs. Projecting a whole table
+  // and a whole swinging tail to the floor falsely seals otherwise clear space.
+  const solids = obstacles.flatMap(box => profile.layers && box.parts?.length ? box.parts : [box]).map(box => {
     const vertices = box.polygon?.map(p => [p.x,p.z]) ?? rectangle(box);
     return {box, limits: NORMALS.map(([x,z]) => support(vertices,x,z))};
   });
@@ -62,11 +64,14 @@ export function createCatCollision(bounds, obstacles, profile = DEFAULT_FOOTPRIN
     }
     const margins = project(footprint);
     const lowMargins = profile.low ? project(profile.low) : margins;
+    const layerMargins = profile.layers?.map(layer=>({...layer,parts:layer.parts.map(project)}));
     const heading = {
       left: margins[0], right: margins[16], back: margins[8], front: margins[24],
       planes: solids.map(({box,limits}) => {
-        const expansion = box.maxY <= .31 ? lowMargins : margins;
-        return limits.map((limit,i) => limit+expansion[i]);
+        const parts = layerMargins
+          ? layerMargins.filter(layer=>layer.minY<(box.maxY??Infinity)-1e-6 && layer.maxY>(box.minY??-Infinity)+1e-6).flatMap(layer=>layer.parts)
+          : [box.maxY <= .31 ? lowMargins : margins];
+        return parts.map(expansion=>limits.map((limit,i)=>limit+expansion[i]));
       }),
     };
     orientations.set(id,heading);
@@ -81,7 +86,7 @@ export function createCatCollision(bounds, obstacles, profile = DEFAULT_FOOTPRIN
     for (let i=0; i<solids.length; i++) {
       const {box} = solids[i];
       if (minX > box.maxX || maxX < box.minX || minZ > box.maxZ || maxZ < box.minZ) continue;
-      if (intersects(from,to,shape.planes[i],padding)) return false;
+      for(const planes of shape.planes[i]) if (intersects(from,to,planes,padding)) return false;
     }
     return true;
   }

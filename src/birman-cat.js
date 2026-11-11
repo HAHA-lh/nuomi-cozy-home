@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { createTailClearance } from './tail-clearance.js';
 
 export const BIRMAN_ASSET_URL = new URL('../assets/nuomi-birman-native.glb', import.meta.url);
 const HAT_DONOR_URL = new URL('../assets/nuomi-blender-refined.glb', import.meta.url);
@@ -94,6 +95,7 @@ export function createBirmanCatController(model, animations = []) {
   const group = new THREE.Group();
   group.name = 'Nuomi_Birman_Runtime';
   group.add(model);
+  const tailClearance=createTailClearance(model,animations);
   const mixer = new THREE.AnimationMixer(model);
   const actions = new Map();
   const hats = Object.fromEntries(['beret', 'leaf', 'bunny'].map(id => [id,
@@ -154,8 +156,12 @@ export function createBirmanCatController(model, animations = []) {
     if (disposed || !Number.isFinite(dt) || !Number.isFinite(time) || dt < 0) return;
     dt = THREE.MathUtils.clamp(dt, 0, .1);
     selectClip(resolveBirmanClip(state, clips.keys()));
-    if (current?.name === 'walk') current.action.setEffectiveTimeScale(state.reverse ? -1 : 1);
+    if (current?.name === 'walk') current.action.setEffectiveTimeScale((state.reverse ? -1 : 1)*(state.strideRate ?? 1));
+    // Restore mixer-owned values first: constant animation tracks may skip
+    // writing identical values and must not accumulate our procedural override.
+    tailClearance.restore();
     mixer.update(dt);
+    tailClearance.apply(state.tailClearance??0);
     for (const [action, remaining] of fadingOut) {
       if (remaining <= dt) {
         if (action !== current?.action) action.stop();

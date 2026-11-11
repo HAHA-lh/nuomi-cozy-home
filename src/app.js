@@ -7,6 +7,7 @@ import { ROOM_CAT_SCALE } from './room-cat-size.js';
 import { loadRoomSeasons } from './room-seasons.js';
 import { addRoomContactShadows } from './room-contact-shadows.js';
 import { createSceneGestures, adjustSceneCamera } from './scene-gestures.js';
+import { connectStudioTuning } from './studio-tuning.js';
 
 const $=s=>document.querySelector(s), icon=id=>`<svg aria-hidden="true"><use href="#i-${id}"/></svg>`;
 let storage;try{storage=window.localStorage;}catch{storage={getItem(){return null;},setItem(){throw Error('Storage unavailable');}};}
@@ -15,7 +16,20 @@ let action='idle',actionEnd=0,pendingAction=null,time=0,lastStamp=0,night=state.
 let azimuth=COZY_ROOM_VIEW.azimuth,elevation=COZY_ROOM_VIEW.elevation,viewHeight=COZY_ROOM_VIEW.height,targetView=COZY_ROOM_VIEW.height,wardrobeFacing=.22;
 const focus=new THREE.Vector3(...COZY_ROOM_VIEW.focus),desiredFocus=focus.clone();let walking=false,route=[];
 let catScale=ROOM_CAT_SCALE;
-const presentation=()=>({wardrobeFocusHeight:1.25*catScale,bubbleHeight:2.65*catScale,walkSpeed:1.25*catScale});
+let tailClearance=1;
+let roomViewHeight=COZY_ROOM_VIEW.height, portraitViewHeight=3.8, pace=1;
+function applyStudioValue(id,value) {
+  if (id==='cat.pace') pace=value;
+  if (id==='camera.room') {
+    roomViewHeight=value;
+    if(tab!=='wardrobe') targetView=value;
+  }
+  if (id==='camera.portrait') {
+    portraitViewHeight=value;
+    if(tab==='wardrobe') targetView=value;
+  }
+}
+const presentation=()=>({wardrobeFocusHeight:1.25*catScale,bubbleHeight:2.65*catScale,walkSpeed:1.25*catScale*pace});
 const themes=[['sage','鼠尾草','#a0ad83','清新 · 松弛'],['peach','奶油桃','#cda895','温暖 · 柔软'],['lavender','雾紫色','#aaa7bb','安静 · 治愈']];
 const hatNames={none:'原本的软绒绒',beret:'奶油贝雷帽',leaf:'头顶小嫩芽',bunny:'软软兔耳帽'};
 const decorNames={box:'软椅陪伴角',bed:'沙发休息角',perch:'窗边日光角'};
@@ -59,10 +73,10 @@ function renderPanel(){
  if(tab==='decorate'&&room?.imported)html=`<div class="panel-heading"><h3>在新的小屋里，陪它一会儿</h3></div><p class="panel-description">保留原场景的奶油色布置；点击下方，选择陪伴位置。</p><span class="section-label">互动小物配色</span><div class="theme-row">${themes.map(([id,n,c])=>`<button class="theme-button ${state.theme===id?'selected':''}" data-theme="${id}" aria-pressed="${state.theme===id}"><span class="swatch" style="background:${c}"></span>${n}<small>食碗 · 小球</small></button>`).join('')}</div><span class="section-label">想在哪里陪它？</span>${[['box','☁','软椅陪伴角','去软椅旁边转一转'],['bed','♡','沙发休息角','在沙发旁安静打个盹'],['perch','☀','窗边日光角','走到窗边看看阳光']].map(([id,em,n,s])=>`<button class="furniture-button ${state.furniture===id?'selected':''}" data-furniture="${id}" aria-pressed="${state.furniture===id}"><span class="item-emoji">${em}</span><span class="item-text"><strong>${n}</strong><small>${s}</small></span></button>`).join('')}<p class="feature-note">沙发、茶几和坐垫有避让区域。<br>猫咪会沿可走动的空地前往目标。</p>`;
  $('#panel').innerHTML=html;
 }
-function resetRoomView(){azimuth=COZY_ROOM_VIEW.azimuth;elevation=COZY_ROOM_VIEW.elevation;targetView=COZY_ROOM_VIEW.height;desiredFocus.set(...COZY_ROOM_VIEW.focus);}
-function selectTab(id){tab=id;document.querySelectorAll('[data-tab]').forEach(b=>{b.classList.toggle('active',b.dataset.tab===id);b.setAttribute('aria-current',b.dataset.tab===id?'page':'false');});if(id==='wardrobe'){targetView=3.8;desiredFocus.copy(cat.group.position).add(new THREE.Vector3(0,presentation().wardrobeFocusHeight,0));azimuth=.22;elevation=.23;}else resetRoomView();renderPanel();sound();}
+function resetRoomView(){azimuth=COZY_ROOM_VIEW.azimuth;elevation=COZY_ROOM_VIEW.elevation;targetView=roomViewHeight;desiredFocus.set(...COZY_ROOM_VIEW.focus);}
+function selectTab(id){tab=id;document.querySelectorAll('[data-tab]').forEach(b=>{b.classList.toggle('active',b.dataset.tab===id);b.setAttribute('aria-current',b.dataset.tab===id?'page':'false');});if(id==='wardrobe'){targetView=portraitViewHeight;desiredFocus.copy(cat.group.position).add(new THREE.Vector3(0,presentation().wardrobeFocusHeight,0));azimuth=.22;elevation=.23;}else resetRoomView();renderPanel();sound();}
 function startAction(id,duration=3){action=id;actionEnd=time+duration;walking=false;route=[];pendingAction=null;if(marker)marker.visible=false;if(id==='play')room.play(time);}
-function moveTo(pos,next='idle'){const nextRoute=room.navigation.path({...cat.group.position,yaw:cat.group.rotation.y},pos);if(!nextRoute.length){toast('这里暂时走不过去，换一块空地试试。');return false;}route=nextRoute;const end=route.at(-1);walking=true;pendingAction=next;action='idle';actionEnd=0;marker.position.set(end.x,room.surfaceHeight(end.x,end.z)+.035,end.z);marker.visible=true;return true;}
+function moveTo(pos,next='idle'){const navigate=pos.yaw===undefined&&room.navigation.pathNear?room.navigation.pathNear:room.navigation.path;const nextRoute=navigate({...cat.group.position,yaw:cat.group.rotation.y},pos);if(!nextRoute.length){toast('这里暂时走不过去，换一块空地试试。');return false;}route=nextRoute;const end=route.at(-1);walking=true;pendingAction=next;action='idle';actionEnd=0;marker.position.set(end.x,room.surfaceHeight(end.x,end.z)+.035,end.z);marker.visible=true;return true;}
 const lastCareAt=new Map();
 function care(type){const now=performance.now();if(now-(lastCareAt.get(type)??-Infinity)<400)return;lastCareAt.set(type,now);
  if(type==='feed'&&!moveTo(room.targets.find(t=>t.id==='bowl').position,'feed'))return;
@@ -70,13 +84,14 @@ function care(type){const now=performance.now();if(now-(lastCareAt.get(type)??-I
  commit({type});sound(true);
  if(type==='pet'){startAction('pet');bubble('呼噜呼噜…再摸一下嘛。');particles(cat.group.position,'#c8a0a1');}
  if(type==='feed'){bubble('开饭啦，我来啦！');}
- if(type==='play'){bubble('这颗球，归我啦！');room.play(time);}
+ if(type==='play'){bubble('这颗球，归我啦！');}
  if(type==='clean'){startAction('idle',1);bubble('小屋又变得干干净净啦。');particles(new THREE.Vector3(0,0,0),'#f5e8a9');toast('清洁已恢复 · 小屋焕然一新');}
  if(tab==='care')renderPanel();
 }
 let keyLight,fillLight,hemi,marker,particleGroup,particlePool=[];
 function particles(pos,color){for(let i=0;i<particlePool.length;i++){const p=particlePool[i];p.visible=true;p.position.copy(pos).add(new THREE.Vector3((Math.random()-.5)*1.4,1.4+Math.random()*.8,(Math.random()-.5)*.8).multiplyScalar(catScale));p.material.color.set(color);p.userData={until:time+1.1+Math.random(),speed:.3+Math.random()*.4};}}
 async function init(){
+ await connectStudioTuning(applyStudioValue);
  try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,preserveDrawingBuffer:true,powerPreference:'high-performance'});}catch(e){fail('浏览器暂不支持 WebGL 2，请开启硬件加速后重试。');return;}
  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.VSMShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.98;
  $('#scene').appendChild(renderer.domElement);renderer.domElement.setAttribute('aria-label','实时 3D 猫咪小屋');renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();fail('图形上下文已暂停，点击重新加载恢复；已有进度不会丢失。');});
@@ -101,20 +116,29 @@ function fail(message){$('#loading').hidden=true;$('#error-detail').textContent=
 function updateCamera(dt){viewHeight=THREE.MathUtils.lerp(viewHeight,targetView,Math.min(1,dt*5));focus.lerp(desiredFocus,Math.min(1,dt*5));const el=$('#scene'),aspect=el.clientWidth/Math.max(1,el.clientHeight);const fittedHeight=viewHeight/Math.min(1,aspect/1.15);camera.left=-fittedHeight*aspect/2;camera.right=fittedHeight*aspect/2;camera.top=fittedHeight/2;camera.bottom=-fittedHeight/2;camera.updateProjectionMatrix();const distance=12;camera.position.set(focus.x+Math.sin(azimuth)*Math.cos(elevation)*distance,focus.y+Math.sin(elevation)*distance,focus.z+Math.cos(azimuth)*Math.cos(elevation)*distance);camera.lookAt(focus);}
 const bubblePoint=new THREE.Vector3();let accumulator=0;
 function frame(stamp){requestAnimationFrame(frame);if(document.hidden){lastStamp=stamp;return;}const delta=lastStamp?Math.min((stamp-lastStamp)/1000,.1):.016;lastStamp=stamp;accumulator+=delta;if(accumulator<1/30)return;const dt=Math.min(accumulator,.07);accumulator%=1/30;time+=dt;
- let locomoting=false,reverse=false;
- if(walking){const result=advanceCatPose({...cat.group.position,yaw:cat.group.rotation.y},route[0],room.navigation,dt,presentation().walkSpeed);
+ let locomoting=false,reverse=false,strideRate=1;
+ const pose={x:cat.group.position.x,z:cat.group.position.z,yaw:cat.group.rotation.y};
+ const facing=action==='pet'?azimuth:tab==='wardrobe'&&action==='idle'?wardrobeFacing:null;
+ const wantsTurn=facing!==null&&Math.abs(Math.atan2(Math.sin(facing-pose.yaw),Math.cos(facing-pose.yaw)))>.01;
+ const liftTail=walking||wantsTurn||!room.canRelaxTail?.(pose);
+ tailClearance=THREE.MathUtils.clamp(tailClearance+(liftTail?1:-1)*dt/.3,0,1);
+ // Lift before leaving the safe standing pose; relax only where the entire
+ // source idle swing and the transition fit. This frees floor beside tables.
+ if(walking&&tailClearance>=1){const result=advanceCatPose({...cat.group.position,yaw:cat.group.rotation.y},route[0],room.navigation,dt,presentation().walkSpeed,route.length===1 || (route[1] && Math.hypot(route[0].x-route[1].x,route[0].z-route[1].z)<1e-6));
+  const travel=Math.hypot(result.pose.x-cat.group.position.x,result.pose.z-cat.group.position.z);
+  strideRate=travel>1e-6?Math.max(.32,Math.min(1.6,travel/(Math.max(.001,dt)*1.25*catScale))):.48;
   cat.group.position.x=result.pose.x;cat.group.position.z=result.pose.z;cat.group.rotation.y=result.pose.yaw;locomoting=result.moving;reverse=result.reverse;
   if(result.blocked){startAction('idle');toast('前面空间太窄，换一块空地试试。');}
   else if(result.arrived){route.shift();if(!route.length){walking=false;marker.visible=false;const next=pendingAction||'idle';startAction(next,next==='sleep'?10:3);if(next==='feed')bubble('咔嚓咔嚓，真香。');}}
  }
- else if(action==='feed'){const bowl=room.targets.find(t=>t.id==='bowl').object.position;const desired=Math.atan2(bowl.x-cat.group.position.x,bowl.z-cat.group.position.z);safeCatFacing(cat.group,desired,room.navigation,dt*4);}else if(action==='pet'){safeCatFacing(cat.group,azimuth,room.navigation,dt*4);}
+ else if(!walking&&tailClearance>=1&&action==='feed'){const bowl=room.targets.find(t=>t.id==='bowl').object.position;const desired=Math.atan2(bowl.x-cat.group.position.x,bowl.z-cat.group.position.z);safeCatFacing(cat.group,desired,room.navigation,dt*4);}else if(!walking&&tailClearance>=1&&action==='pet'){safeCatFacing(cat.group,azimuth,room.navigation,dt*4);}
  if(actionEnd&&time>actionEnd){action='idle';actionEnd=0;}
  // Keep the entry pose fixed while orbiting: dragging must reveal the real side/back,
  // rather than having the cat continuously turn to face the camera.
- if(tab==='wardrobe'&&!walking&&action==='idle')safeCatFacing(cat.group,wardrobeFacing,room.navigation,dt*4);
+ if(tab==='wardrobe'&&!walking&&action==='idle'&&tailClearance>=1)safeCatFacing(cat.group,wardrobeFacing,room.navigation,dt*4);
  cat.group.position.y=THREE.MathUtils.lerp(cat.group.position.y,room.surfaceHeight(cat.group.position.x,cat.group.position.z),Math.min(1,dt*10));
  if(tab==='wardrobe')desiredFocus.copy(cat.group.position).add(new THREE.Vector3(0,presentation().wardrobeFocusHeight,0));
- cat.update(dt,time,{action,moving:locomoting,reverse});renderer.domElement.dataset.animation=cat.currentAnimation||action;room.update(dt,time);room.updateVisibility(azimuth);seasons?.update(dt);seasons?.animate(time,reducedLightMotion.matches);updateCamera(dt);
+ cat.update(dt,time,{action,moving:locomoting,reverse,strideRate,tailClearance});renderer.domElement.dataset.animation=cat.currentAnimation||action;room.update(dt,time);room.updateVisibility(azimuth);seasons?.update(dt);seasons?.animate(time,reducedLightMotion.matches);updateCamera(dt);
  particlePool.forEach(p=>{if(!p.visible)return;p.position.y+=dt*p.userData.speed;p.material.opacity=Math.min(1,Math.max(0,(p.userData.until-time)*1.4));if(time>p.userData.until)p.visible=false;});
  bubblePoint.copy(cat.group.position).add(new THREE.Vector3(0,presentation().bubbleHeight,0)).project(camera);const r=$('#scene').getBoundingClientRect();$('#cat-bubble').style.left=((bubblePoint.x+1)*.5*r.width)+'px';$('#cat-bubble').style.top=((-bubblePoint.y+1)*.5*r.height)+'px';renderer.render(scene,camera);
 }

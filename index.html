@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f5f3e9">
   <title>糯米的小屋 · 可交互 3D 样机</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=room-roaming-4">
 </head>
 <body>
   <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -31,32 +31,33 @@
   </svg>
   <header class="topbar">
     <div class="brand"><span class="brand-mark"><svg><use href="#i-home"/></svg></span><div><h1>糯米的小屋</h1><p>NUOMI’S LITTLE HOME</p></div></div>
-    <div class="top-actions"><span class="live-label"><i></i>实时 3D · 可交互样机</span><button class="icon-button" id="sound-button" aria-label="开启音效" title="开启音效"><svg><use href="#i-mute"/></svg></button><button class="icon-button" id="help-button" aria-label="玩法说明" title="玩法说明">?</button></div>
+    <div class="top-actions"><button class="icon-button" id="sound-button" aria-label="开启音效" title="开启音效"><svg><use href="#i-mute"/></svg></button><button class="icon-button" id="help-button" aria-label="玩法说明" title="玩法说明">?</button></div>
   </header>
   <main class="app-shell">
     <section class="scene-section" aria-label="糯米的三维小屋">
       <div id="scene" role="img" aria-label="可点击的 3D 房间，点击猫咪摸头，点击家具互动，双指拖动旋转，双指开合缩放"></div>
-      <div class="scene-heading"><span class="eyebrow">A LITTLE MOMENT TOGETHER</span><h2>今天也要，好好陪你。</h2><p><span class="sun-dot"></span><span id="light-label">午后 · 阳光正好</span></p></div>
+      <div class="scene-heading"><p><span class="sun-dot"></span><span id="light-label">午后 · 阳光正好</span></p></div>
       <div class="season-picker"><div class="season-controls" id="season-controls" role="group" aria-label="切换小屋四季"><button data-season="spring" disabled aria-pressed="false"><span aria-hidden="true">✿</span>春</button><button data-season="summer" disabled aria-pressed="false"><span aria-hidden="true">☀</span>夏</button><button data-season="autumn" disabled aria-pressed="false"><span aria-hidden="true">❧</span>秋</button><button data-season="winter" disabled aria-pressed="false"><span aria-hidden="true">❄</span>冬</button></div><p id="season-description" role="status">正在准备四季的小屋…</p></div>
       <div class="view-controls"><button class="icon-button" id="light-button" title="切换傍晚灯光" aria-label="切换傍晚灯光"><svg><use href="#i-sun"/></svg></button><button class="icon-button" id="reset-camera" title="恢复视角" aria-label="恢复视角"><svg><use href="#i-reset"/></svg></button><button class="icon-button" id="zoom-in" title="靠近糯米" aria-label="靠近糯米">＋</button><button class="icon-button" id="zoom-out" title="看完整小屋" aria-label="看完整小屋">－</button></div>
       <div class="cat-bubble" id="cat-bubble" aria-hidden="true">喵，想和你玩。</div>
       <div id="loading" class="loading"><span class="loading-paw">✦</span><strong>糯米正在走过来</strong><span>准备小屋和 3D 角色…</span></div>
       <div id="render-error" class="render-error" hidden><strong>这次没能打开 3D 小屋</strong><p id="error-detail"></p><button id="reload-button" class="primary-button">重新加载</button></div>
-      <div class="scene-caption"><span class="caption-pill">双指开合缩放 · 双指拖动旋转</span><span class="prototype-note">奶油小屋 · 原生绑定猫咪</span></div>
+      <div class="scene-caption"><span class="caption-pill">双指开合缩放 · 双指拖动旋转</span></div>
     </section>
     <aside class="sidebar" aria-label="陪伴与装扮">
       <section class="cat-card"><span class="cat-avatar" aria-hidden="true"><svg><use href="#i-paw"/></svg></span><div><h2>糯米 <span>伯曼猫</span></h2><p id="cat-mood">把普通的一天，过得软乎乎。</p></div><svg class="heart-icon"><use href="#i-heart"/></svg></section>
       <div class="stats"><div><span>亲密</span><strong id="affection-value">20</strong><div class="meter"><i id="affection-meter"></i></div></div><div><span>饱腹</span><strong id="fullness-value">70</strong><div class="meter gold"><i id="fullness-meter"></i></div></div><div><span>清洁</span><strong id="cleanliness-value">85</strong><div class="meter blue"><i id="cleanliness-meter"></i></div></div></div>
+      <nav class="bottom-nav" aria-label="主导航"><button data-tab="care" class="active"><svg><use href="#i-paw"/></svg><span>陪伴</span></button><button data-tab="decorate"><svg><use href="#i-chair"/></svg><span>布置</span></button><button data-tab="wardrobe"><svg><use href="#i-hat"/></svg><span>衣橱</span></button><button data-tab="album"><svg><use href="#i-camera"/></svg><span>相册</span><span id="album-count" class="badge" hidden>0</span></button></nav>
       <div id="panel" aria-live="polite"></div>
       <div class="save-status"><span id="save-dot"></span><span id="save-label">进度保存在这台设备</span></div>
     </aside>
   </main>
-  <nav class="bottom-nav" aria-label="主导航"><button data-tab="care" class="active"><svg><use href="#i-paw"/></svg><span>陪伴</span></button><button data-tab="decorate"><svg><use href="#i-chair"/></svg><span>布置</span></button><button data-tab="wardrobe"><svg><use href="#i-hat"/></svg><span>衣橱</span></button><button data-tab="album"><svg><use href="#i-camera"/></svg><span>相册</span><span id="album-count" class="badge" hidden>0</span></button></nav>
+  
   <div id="toast" class="toast" role="status"></div>
   <dialog id="help-dialog"><button class="dialog-close icon-button" id="close-help" aria-label="关闭说明"><svg><use href="#i-close"/></svg></button><span class="eyebrow">MAKE YOURSELF AT HOME</span><h2>一间小屋，慢慢熟悉。</h2><p>这里的猫、家具和帽子都是真实的 3D 物体，不是预录视频。</p><ul><li>点击糯米摸摸头；点击地面让它走过去。</li><li>点击食盆、小球、沙发、软椅或窗帘，让它走到相应位置互动。</li><li>触屏：双指开合缩放，两指同时拖动旋转；单指点击互动。电脑：鼠标拖动旋转，滚轮或右侧 ＋ / － 调整远近。</li><li>在衣橱换帽子；布置页可切换食碗、小球配色，并选择陪伴角落。</li><li>相册可以拍摄、查看和下载小屋照片。</li></ul><p class="small-note">这是浏览器交互样机，全部物品免费试用，无真实交易。存档只在本机；尚未进行微信真机验收。猫咪使用原生绑定和 10 个动作；当前只能在地面走动，不会跳上家具。镜面使用静态房间反射，不映射移动中的猫。</p><button id="start-playing" class="primary-button">开始陪伴 <svg><use href="#i-arrow"/></svg></button></dialog>
   <dialog id="photo-dialog"><button class="dialog-close icon-button" id="close-photo" aria-label="关闭照片"><svg><use href="#i-close"/></svg></button><img id="photo-large" alt="糯米的小屋照片"><a id="photo-download" class="primary-button" download="nuomi.png"><svg><use href="#i-download"/></svg>保存照片</a></dialog>
-  <script type="importmap">{"imports":{"./src/birman-cat.js":"./src/birman-cat.js?v=room-layout-2","./src/app.js":"./src/app.js?v=room-layout-2","./src/imported-room.js":"./src/imported-room.js?v=room-layout-2","./src/room-seasons.js":"./src/room-seasons.js?v=room-layout-2","./src/cat-navigation.js":"./src/cat-navigation.js?v=room-layout-2","./src/cat-collision.js":"./src/cat-collision.js?v=room-layout-2"}}</script>
-  <script type="module" src="./src/app.js?v=room-layout-2"></script>
+  <script type="importmap">{"imports":{"./src/birman-cat.js":"./src/birman-cat.js?v=room-roaming-4","./src/app.js":"./src/app.js?v=room-roaming-4","./src/imported-room.js":"./src/imported-room.js?v=room-roaming-4","./src/room-seasons.js":"./src/room-seasons.js?v=room-roaming-4","./src/cat-navigation.js":"./src/cat-navigation.js?v=room-roaming-4","./src/cat-collision.js":"./src/cat-collision.js?v=room-roaming-4","./src/birman-clearance.js":"./src/birman-clearance.js?v=room-roaming-4","./src/tail-clearance.js":"./src/tail-clearance.js?v=room-roaming-4","./src/studio-tuning.js":"./src/studio-tuning.js?v=room-roaming-4"}}</script>
+  <script type="module" src="./src/app.js?v=room-roaming-4"></script>
   <script>window.addEventListener('error',function(e){if(!document.querySelector('#scene canvas')){document.getElementById('loading').hidden=true;document.getElementById('render-error').hidden=false;document.getElementById('error-detail').textContent='请通过本地预览地址打开，而不是直接双击 HTML。'+(e.message||'');}});document.getElementById('reload-button').onclick=()=>location.reload();</script>
 </body>
 </html>

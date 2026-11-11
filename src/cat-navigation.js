@@ -121,7 +121,20 @@ export function createCatNavigation(bounds, obstacles, step=.16, footprint) {
           distance(a,b)+distance(b,point)-distance(a,point)<1e-7 && collision.sweepClear(a,point)) result.pop();
       result.push(point);
     }
-    return result.length ? result : [pose(start)];
+    // Remove grid zigzags only when the complete turn/move/arrival sequence is
+    // clear. Keep necessary reverse/side steps in the narrow table passages.
+    if(!result.length)return [pose(start)];
+    const smooth=[];let previous=start,cursor=0;
+    while(cursor<result.length){
+      let chosen=null,last=cursor;
+      for(let j=result.length-1;j>=cursor;j--){
+        const candidate=connect(previous,result[j]);
+        if(candidate){chosen=candidate;last=j;break;}
+      }
+      chosen??=[result[cursor]];
+      smooth.push(...chosen);previous=smooth.at(-1);cursor=last+1;
+    }
+    return smooth;
   }
   function path(from,to) {
     const first=pose(from);
@@ -174,6 +187,16 @@ export function createCatNavigation(bounds, obstacles, step=.16, footprint) {
     }
     return best && {...best};
   }
+  function pathNear(from,to,maxDistance=.42) {
+    const exact=path(from,to);
+    if(exact.length)return exact;
+    // A tap just beside a leg may not leave room for the cat's centre. Pick a
+    // nearby reachable stance, never teleport or route through the furniture.
+    const candidates=nodes.filter((p,i)=>free[i]&&distance(p,to)<=maxDistance)
+      .sort((a,b)=>distance(a,to)-distance(b,to)+.015*(distance(a,from)-distance(b,from)));
+    for(const candidate of candidates){const route=path(from,candidate);if(route.length)return route;}
+    return [];
+  }
   function isWalkable(p) {
     return p.yaw!==undefined ? collision.isPoseClear(p) : HEADINGS.some(({yaw})=>collision.isPoseClear({...p,yaw}));
   }
@@ -181,17 +204,19 @@ export function createCatNavigation(bounds, obstacles, step=.16, footprint) {
     const heading=distance(a,b)>1e-7?Math.atan2(b.x-a.x,b.z-a.z):b.yaw ?? a.yaw ?? 0;
     return collision.sweepClear({...a,yaw:a.yaw??heading},{...b,yaw:b.yaw??heading});
   }
-  return {bounds,radius:.32,obstacles,path,clamp,isWalkable,segmentClear,...collision};
+  return {bounds,radius:.32,obstacles,path,pathNear,clamp,isWalkable,segmentClear,...collision};
 }
 
-export function advanceCatPose(from,target,navigation,dt,speed) {
+export function advanceCatPose(from,target,navigation,dt,speed,settle=false) {
   const next=pose(from), delta=angle(from.yaw,target.yaw??from.yaw);
   if (Math.abs(delta)>1e-6) {
-    next.yaw+=Math.sign(delta)*Math.min(Math.abs(delta),dt*3);
+    const turnRate=Math.min(3.4,Math.max(.55,Math.sqrt(12*Math.abs(delta))));
+    next.yaw+=Math.sign(delta)*Math.min(Math.abs(delta),dt*turnRate);
   } else {
     const length=distance(from,target);
     if (length>1e-7) {
-      const fraction=Math.min(1,dt*speed/length);
+      const approach=settle ? Math.min(speed,Math.max(.15,Math.sqrt(1.8*length))) : speed;
+      const fraction=Math.min(1,dt*approach/length);
       next.x+=(target.x-from.x)*fraction;
       next.z+=(target.z-from.z)*fraction;
     }
