@@ -218,7 +218,7 @@ export function advanceCatPose(from,target,navigation,dt,speed,settle=false) {
   if (!navigation.sweepClear(from,next)) return {pose:from,blocked:true,arrived:false,moving:false};
   const arrived=distance(next,target)<1e-7 && Math.abs(angle(next.yaw,target.yaw??next.yaw))<1e-6;
   const turning=Math.abs(angle(from.yaw,next.yaw))>1e-7;
-  return {pose:next,blocked:false,arrived,moving:turning||distance(from,next)>1e-7,reverse:false};
+  return {pose:next,blocked:false,arrived,moving:distance(from,next)>1e-7,turning,reverse:false};
 }
 
 export function safeCatFacing(group,heading,navigation,fraction) {

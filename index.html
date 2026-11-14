@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f5f3e9">
   <title>糯米的小屋 · 可交互 3D 样机</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./style.css?v=room-forward-5">
+  <link rel="stylesheet" href="./style.css?v=room-head-first-6">
 </head>
 <body>
   <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -56,8 +56,8 @@
   <div id="toast" class="toast" role="status"></div>
   <dialog id="help-dialog"><button class="dialog-close icon-button" id="close-help" aria-label="关闭说明"><svg><use href="#i-close"/></svg></button><span class="eyebrow">MAKE YOURSELF AT HOME</span><h2>一间小屋，慢慢熟悉。</h2><p>这里的猫、家具和帽子都是真实的 3D 物体，不是预录视频。</p><ul><li>点击糯米摸摸头；点击地面让它走过去。</li><li>点击食盆、小球、沙发、软椅或窗帘，让它走到相应位置互动。</li><li>触屏：双指开合缩放，两指同时拖动旋转；单指点击互动。电脑：鼠标拖动旋转，滚轮或右侧 ＋ / － 调整远近。</li><li>在衣橱换帽子；布置页可切换食碗、小球配色，并选择陪伴角落。</li><li>相册可以拍摄、查看和下载小屋照片。</li></ul><p class="small-note">这是浏览器交互样机，全部物品免费试用，无真实交易。存档只在本机；尚未进行微信真机验收。猫咪使用原生绑定和 10 个动作；当前只能在地面走动，不会跳上家具。镜面使用静态房间反射，不映射移动中的猫。</p><button id="start-playing" class="primary-button">开始陪伴 <svg><use href="#i-arrow"/></svg></button></dialog>
   <dialog id="photo-dialog"><button class="dialog-close icon-button" id="close-photo" aria-label="关闭照片"><svg><use href="#i-close"/></svg></button><img id="photo-large" alt="糯米的小屋照片"><a id="photo-download" class="primary-button" download="nuomi.png"><svg><use href="#i-download"/></svg>保存照片</a></dialog>
-  <script type="importmap">{"imports":{"./src/birman-cat.js":"./src/birman-cat.js?v=room-forward-5","./src/app.js":"./src/app.js?v=room-forward-5","./src/imported-room.js":"./src/imported-room.js?v=room-forward-5","./src/room-seasons.js":"./src/room-seasons.js?v=room-forward-5","./src/cat-navigation.js":"./src/cat-navigation.js?v=room-forward-5","./src/cat-collision.js":"./src/cat-collision.js?v=room-forward-5","./src/birman-clearance.js":"./src/birman-clearance.js?v=room-forward-5","./src/tail-clearance.js":"./src/tail-clearance.js?v=room-forward-5","./src/studio-tuning.js":"./src/studio-tuning.js?v=room-forward-5"}}</script>
-  <script type="module" src="./src/app.js?v=room-forward-5"></script>
+  <script type="importmap">{"imports":{"./src/head-look.js":"./src/head-look.js?v=room-head-first-6","./src/cat-intent.js":"./src/cat-intent.js?v=room-head-first-6","./src/birman-cat.js":"./src/birman-cat.js?v=room-head-first-6","./src/app.js":"./src/app.js?v=room-head-first-6","./src/imported-room.js":"./src/imported-room.js?v=room-head-first-6","./src/room-seasons.js":"./src/room-seasons.js?v=room-head-first-6","./src/cat-navigation.js":"./src/cat-navigation.js?v=room-head-first-6","./src/cat-collision.js":"./src/cat-collision.js?v=room-head-first-6","./src/birman-clearance.js":"./src/birman-clearance.js?v=room-head-first-6","./src/tail-clearance.js":"./src/tail-clearance.js?v=room-head-first-6","./src/studio-tuning.js":"./src/studio-tuning.js?v=room-head-first-6"}}</script>
+  <script type="module" src="./src/app.js?v=room-head-first-6"></script>
   <script>window.addEventListener('error',function(e){if(!document.querySelector('#scene canvas')){document.getElementById('loading').hidden=true;document.getElementById('render-error').hidden=false;document.getElementById('error-detail').textContent='请通过本地预览地址打开，而不是直接双击 HTML。'+(e.message||'');}});document.getElementById('reload-button').onclick=()=>location.reload();</script>
 </body>
 </html>

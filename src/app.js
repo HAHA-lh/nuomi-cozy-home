@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { advanceCatPose, safeCatFacing } from './cat-navigation.js';
+import { createCatIntent } from './cat-intent.js';
 import { loadBlenderCat } from './blender-cat.js';
 import { loadImportedRoom, COZY_ROOM_VIEW } from './imported-room.js';
 import { loadState, saveState, applyAction } from './state.js';
@@ -8,6 +9,7 @@ import { loadRoomSeasons } from './room-seasons.js';
 import { addRoomContactShadows } from './room-contact-shadows.js';
 import { createSceneGestures, adjustSceneCamera } from './scene-gestures.js';
 import { connectStudioTuning } from './studio-tuning.js';
+const intent=createCatIntent();
 
 const $=s=>document.querySelector(s), icon=id=>`<svg aria-hidden="true"><use href="#i-${id}"/></svg>`;
 let storage;try{storage=window.localStorage;}catch{storage={getItem(){return null;},setItem(){throw Error('Storage unavailable');}};}
@@ -75,8 +77,8 @@ function renderPanel(){
 }
 function resetRoomView(){azimuth=COZY_ROOM_VIEW.azimuth;elevation=COZY_ROOM_VIEW.elevation;targetView=roomViewHeight;desiredFocus.set(...COZY_ROOM_VIEW.focus);}
 function selectTab(id){tab=id;document.querySelectorAll('[data-tab]').forEach(b=>{b.classList.toggle('active',b.dataset.tab===id);b.setAttribute('aria-current',b.dataset.tab===id?'page':'false');});if(id==='wardrobe'){targetView=portraitViewHeight;desiredFocus.copy(cat.group.position).add(new THREE.Vector3(0,presentation().wardrobeFocusHeight,0));azimuth=.22;elevation=.23;}else resetRoomView();renderPanel();sound();}
-function startAction(id,duration=3){action=id;actionEnd=time+duration;walking=false;route=[];pendingAction=null;if(marker)marker.visible=false;if(id==='play')room.play(time);}
-function moveTo(pos,next='idle'){const navigate=pos.yaw===undefined&&room.navigation.pathNear?room.navigation.pathNear:room.navigation.path;const nextRoute=navigate({...cat.group.position,yaw:cat.group.rotation.y},pos);if(!nextRoute.length){toast('这里暂时走不过去，换一块空地试试。');return false;}route=nextRoute;const end=route.at(-1);walking=true;pendingAction=next;action='idle';actionEnd=0;marker.position.set(end.x,room.surfaceHeight(end.x,end.z)+.035,end.z);marker.visible=true;return true;}
+function startAction(id,duration=3){intent.cancel();action=id;actionEnd=time+duration;walking=false;route=[];pendingAction=null;if(marker)marker.visible=false;if(id==='play')room.play(time);}
+function moveTo(pos,next='idle'){const navigate=pos.yaw===undefined&&room.navigation.pathNear?room.navigation.pathNear:room.navigation.path;const nextRoute=navigate({...cat.group.position,yaw:cat.group.rotation.y},pos);if(!nextRoute.length){toast('这里暂时走不过去，换一块空地试试。');return false;}route=nextRoute;intent.begin(pos);const end=route.at(-1);walking=true;pendingAction=next;action='idle';actionEnd=0;marker.position.set(end.x,room.surfaceHeight(end.x,end.z)+.035,end.z);marker.visible=true;return true;}
 const lastCareAt=new Map();
 function care(type){const now=performance.now();if(now-(lastCareAt.get(type)??-Infinity)<400)return;lastCareAt.set(type,now);
  if(type==='feed'&&!moveTo(room.targets.find(t=>t.id==='bowl').position,'feed'))return;
@@ -116,18 +118,19 @@ function fail(message){$('#loading').hidden=true;$('#error-detail').textContent=
 function updateCamera(dt){viewHeight=THREE.MathUtils.lerp(viewHeight,targetView,Math.min(1,dt*5));focus.lerp(desiredFocus,Math.min(1,dt*5));const el=$('#scene'),aspect=el.clientWidth/Math.max(1,el.clientHeight);const fittedHeight=viewHeight/Math.min(1,aspect/1.15);camera.left=-fittedHeight*aspect/2;camera.right=fittedHeight*aspect/2;camera.top=fittedHeight/2;camera.bottom=-fittedHeight/2;camera.updateProjectionMatrix();const distance=12;camera.position.set(focus.x+Math.sin(azimuth)*Math.cos(elevation)*distance,focus.y+Math.sin(elevation)*distance,focus.z+Math.cos(azimuth)*Math.cos(elevation)*distance);camera.lookAt(focus);}
 const bubblePoint=new THREE.Vector3();let accumulator=0;
 function frame(stamp){requestAnimationFrame(frame);if(document.hidden){lastStamp=stamp;return;}const delta=lastStamp?Math.min((stamp-lastStamp)/1000,.1):.016;lastStamp=stamp;accumulator+=delta;if(accumulator<1/30)return;const dt=Math.min(accumulator,.07);accumulator%=1/30;time+=dt;
- let locomoting=false,strideRate=1;
+ let locomoting=false,turning=false,strideRate=1;
  const pose={x:cat.group.position.x,z:cat.group.position.z,yaw:cat.group.rotation.y};
+ const intention=walking?intent.update(dt,pose):{};
  const facing=action==='pet'?azimuth:tab==='wardrobe'&&action==='idle'?wardrobeFacing:null;
  const wantsTurn=facing!==null&&Math.abs(Math.atan2(Math.sin(facing-pose.yaw),Math.cos(facing-pose.yaw)))>.01;
  const liftTail=walking||wantsTurn||!room.canRelaxTail?.(pose);
  tailClearance=THREE.MathUtils.clamp(tailClearance+(liftTail?1:-1)*dt/.3,0,1);
  // Lift before leaving the safe standing pose; relax only where the entire
  // source idle swing and the transition fit. This frees floor beside tables.
- if(walking&&tailClearance>=1){const result=advanceCatPose({...cat.group.position,yaw:cat.group.rotation.y},route[0],room.navigation,dt,presentation().walkSpeed,route.length===1 || (route[1] && Math.hypot(route[0].x-route[1].x,route[0].z-route[1].z)<1e-6));
+ if(walking&&tailClearance>=1&&!intention.hold){const result=advanceCatPose({...cat.group.position,yaw:cat.group.rotation.y},route[0],room.navigation,dt,presentation().walkSpeed,route.length===1 || (route[1] && Math.hypot(route[0].x-route[1].x,route[0].z-route[1].z)<1e-6));
   const travel=Math.hypot(result.pose.x-cat.group.position.x,result.pose.z-cat.group.position.z);
   strideRate=travel>1e-6?Math.max(.32,Math.min(1.6,travel/(Math.max(.001,dt)*1.25*catScale))):.48;
-  cat.group.position.x=result.pose.x;cat.group.position.z=result.pose.z;cat.group.rotation.y=result.pose.yaw;locomoting=result.moving;
+  cat.group.position.x=result.pose.x;cat.group.position.z=result.pose.z;cat.group.rotation.y=result.pose.yaw;locomoting=result.moving;turning=result.turning;
   if(result.blocked){startAction('idle');toast('前面空间太窄，换一块空地试试。');}
   else if(result.arrived){route.shift();if(!route.length){walking=false;marker.visible=false;const next=pendingAction||'idle';startAction(next,next==='sleep'?10:3);if(next==='feed')bubble('咔嚓咔嚓，真香。');}}
  }
@@ -138,7 +141,10 @@ function frame(stamp){requestAnimationFrame(frame);if(document.hidden){lastStamp
  if(tab==='wardrobe'&&!walking&&action==='idle'&&tailClearance>=1)safeCatFacing(cat.group,wardrobeFacing,room.navigation,dt*4);
  cat.group.position.y=THREE.MathUtils.lerp(cat.group.position.y,room.surfaceHeight(cat.group.position.x,cat.group.position.z),Math.min(1,dt*10));
  if(tab==='wardrobe')desiredFocus.copy(cat.group.position).add(new THREE.Vector3(0,presentation().wardrobeFocusHeight,0));
- cat.update(dt,time,{action,moving:locomoting,strideRate,tailClearance});renderer.domElement.dataset.animation=cat.currentAnimation||action;room.update(dt,time);room.updateVisibility(azimuth);seasons?.update(dt);seasons?.animate(time,reducedLightMotion.matches);updateCamera(dt);
+ cat.update(dt,time,{action,moving:locomoting,turning,prepare:intention.prepare||(walking&&!intention.hold&&!locomoting),lookYaw:intention.lookYaw,lookWeight:intention.lookWeight,strideRate,tailClearance});
+ const motion=walking?(intention.hold?intention.phase:turning?'turn':locomoting?'forward':'ready'):'idle';
+ if(renderer.domElement.dataset.motion!==motion){renderer.domElement.dataset.motionTrace=((renderer.domElement.dataset.motionTrace||'')+' '+motion).trim().split(' ').slice(-16).join(' ');renderer.domElement.dataset.motion=motion;}
+ renderer.domElement.dataset.animation=cat.currentAnimation||action;room.update(dt,time);room.updateVisibility(azimuth);seasons?.update(dt);seasons?.animate(time,reducedLightMotion.matches);updateCamera(dt);
  particlePool.forEach(p=>{if(!p.visible)return;p.position.y+=dt*p.userData.speed;p.material.opacity=Math.min(1,Math.max(0,(p.userData.until-time)*1.4));if(time>p.userData.until)p.visible=false;});
  bubblePoint.copy(cat.group.position).add(new THREE.Vector3(0,presentation().bubbleHeight,0)).project(camera);const r=$('#scene').getBoundingClientRect();$('#cat-bubble').style.left=((bubblePoint.x+1)*.5*r.width)+'px';$('#cat-bubble').style.top=((-bubblePoint.y+1)*.5*r.height)+'px';renderer.render(scene,camera);
 }

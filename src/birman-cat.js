@@ -1,6 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { createTailClearance } from './tail-clearance.js';
+import { createHeadLook } from './head-look.js';
 
 export const BIRMAN_ASSET_URL = new URL('../assets/nuomi-birman-native.glb', import.meta.url);
 const HAT_DONOR_URL = new URL('../assets/nuomi-blender-refined.glb', import.meta.url);
@@ -26,7 +27,7 @@ const clipName = name => String(name).split('|').at(-1).trim().toLowerCase().rep
 
 export function resolveBirmanClip(state = {}, available = []) {
   const names = new Set(Array.from(available, clipName));
-  const requested = state.moving ? ['walk', 'idle'] : (BIRMAN_ACTION_CLIPS[state.action] || BIRMAN_ACTION_CLIPS.idle);
+  const requested = state.moving || state.turning || state.prepare ? ['walk', 'idle'] : (BIRMAN_ACTION_CLIPS[state.action] || BIRMAN_ACTION_CLIPS.idle);
   return requested.find(name => names.has(name)) || null;
 }
 
@@ -96,6 +97,7 @@ export function createBirmanCatController(model, animations = []) {
   group.name = 'Nuomi_Birman_Runtime';
   group.add(model);
   const tailClearance=createTailClearance(model,animations);
+  const headLook=createHeadLook(model,group);
   const mixer = new THREE.AnimationMixer(model);
   const actions = new Map();
   const hats = Object.fromEntries(['beret', 'leaf', 'bunny'].map(id => [id,
@@ -156,12 +158,16 @@ export function createBirmanCatController(model, animations = []) {
     if (disposed || !Number.isFinite(dt) || !Number.isFinite(time) || dt < 0) return;
     dt = THREE.MathUtils.clamp(dt, 0, .1);
     selectClip(resolveBirmanClip(state, clips.keys()));
-    if (current?.name === 'walk') current.action.setEffectiveTimeScale(THREE.MathUtils.clamp(state.strideRate??1,.15,1.6));
+    if (current?.name === 'walk') current.action.setEffectiveTimeScale(state.prepare||state.turning?0:THREE.MathUtils.clamp(state.strideRate??1,.15,1.6));
     // Restore mixer-owned values first: constant animation tracks may skip
     // writing identical values and must not accumulate our procedural override.
     tailClearance.restore();
+    headLook.restore();
     mixer.update(dt);
     tailClearance.apply(state.tailClearance??0);
+    // The glance is certified against the idle envelope; authored walk and
+    // crossfades retain their original head pose and collision bounds.
+    if(current?.name==='idle'&&!fadingOut.size)headLook.apply(state.lookYaw,state.lookWeight??1);
     for (const [action, remaining] of fadingOut) {
       if (remaining <= dt) {
         if (action !== current?.action) action.stop();
